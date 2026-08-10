@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASVB Bièville-Beuville — Présences</title>
+<style>
+  :root{
+    --font-display: 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: 'SF Mono', 'Consolas', 'Menlo', 'Courier New', monospace;
+    --bg:#0F1720;
+    --panel:#16212E;
+    --panel-2:#1C2A39;
+    --line:#2A3B4E;
+    --ink:#EEF1F4;
+    --muted:#8CA0B4;
+    --gold:#F0B429;
+    --blue:#2E7DD1;
+    --present:#3FA796;
+    --absent:#E2574C;
+    --excused:#F0B429;
+    --unset:#3A4A5D;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 18px 60px;}
+
+  /* ===== Header / scoreboard ===== */
+  header{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:3px solid var(--gold);
+    padding-bottom:14px;margin-bottom:18px;flex-wrap:wrap;gap:10px;
+  }
+  .club{
+    font-family:var(--font-display);font-weight:800;
+    font-size:clamp(24px,4vw,38px);
+    letter-spacing:0.5px;
+    line-height:1;
+    text-transform:uppercase;
+  }
+  .club span{color:var(--gold);}
+  .subtitle{color:var(--muted);font-size:13px;margin-top:4px;letter-spacing:0.3px;}
+  .season-tag{
+    font-family:var(--font-mono);
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--gold);
+    padding:6px 12px;border-radius:4px;font-size:13px;font-weight:600;
+  }
+
+  /* ===== Team tabs ===== */
+  .teamtabs{display:flex;gap:10px;margin-bottom:18px;}
+  .teamtab{
+    flex:1;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:12px 16px;
+    cursor:pointer;
+    transition:all .15s ease;
+    position:relative;
+    overflow:hidden;
+  }
+  .teamtab.active{border-color:var(--gold);background:var(--panel-2);}
+  .teamtab .t-name{font-family:var(--font-display);font-weight:800;font-size:18px;text-transform:uppercase;letter-spacing:.3px;}
+  .teamtab .t-div{color:var(--muted);font-size:12px;font-family:var(--font-mono);margin-top:2px;}
+  .teamtab.active .t-name{color:var(--gold);}
+
+  /* ===== Toolbar ===== */
+  .toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .toolbar button{
+    background:var(--panel);border:1px solid var(--line);color:var(--ink);
+    padding:9px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .toolbar button.active{background:var(--gold);color:#1a1305;border-color:var(--gold);}
+
+  /* ===== Timeline (liste pleine largeur, accordéon) ===== */
+  .timeline{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .month-label{
+    position:sticky;top:0;
+    background:var(--panel);
+    color:var(--gold);
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    padding:10px 14px 6px;
+    border-bottom:1px solid var(--line);
+  }
+  .sess{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 14px;
+    cursor:pointer;
+    border-bottom:1px solid var(--line);
+    transition:background .12s;
+  }
+  .sess:hover{background:var(--panel-2);}
+  .sess.selected{background:var(--panel-2);border-left:3px solid var(--gold);}
+  .sess .d{
+    font-family:var(--font-mono);font-size:13px;font-weight:600;
+    width:44px;color:var(--ink);flex-shrink:0;
+  }
+  .sess .teamcol{
+    font-family:var(--font-mono);font-size:10px;font-weight:700;
+    color:var(--gold);background:rgba(240,180,41,0.1);border:1px solid rgba(240,180,41,0.3);
+    border-radius:4px;padding:2px 6px;flex-shrink:0;width:34px;text-align:center;
+  }
+  .sess .info{flex:1;min-width:0;}
+  .sess .lbl{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sess .sub{font-size:11px;color:var(--muted);}
+  .badge{
+    font-size:10px;font-weight:700;letter-spacing:.4px;
+    padding:2px 7px;border-radius:20px;text-transform:uppercase;flex-shrink:0;
+  }
+  .badge.entr{background:#22364a;color:#8fb4d9;}
+  .badge.dom{background:#1f4a3d;color:#5fd6ae;}
+  .badge.ext{background:#4a2f1f;color:#e8a35f;}
+  .badge.coupe{background:#4a3d1f;color:var(--gold);}
+  .badge.bye{background:#333;color:#999;}
+
+  /* ===== Main panel (bilan + détail déplié inline) ===== */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 20px 22px;
+    margin-bottom:16px;
+  }
+  .detail{
+    background:var(--panel-2);
+    border-top:2px solid var(--gold);
+    border-bottom:1px solid var(--line);
+    padding:16px 16px 18px;
+  }
+  .sess-head{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:14px;}
+  .sess-head h2{
+    font-family:var(--font-display);font-weight:800;font-size:22px;text-transform:uppercase;
+    margin:0 0 4px;letter-spacing:.3px;
+  }
+  .sess-meta{color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:14px;}
+  .sess-meta b{color:var(--ink);}
+  .note{
+    margin-top:8px;font-size:12px;color:var(--gold);
+    background:rgba(240,180,41,0.08);border:1px solid rgba(240,180,41,0.25);
+    padding:6px 10px;border-radius:6px;display:inline-block;
+  }
+
+  .toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+  .view-toggle{display:flex;gap:6px;}
+  .view-toggle button{
+    background:transparent;border:1px solid var(--line);color:var(--muted);
+    padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;
+  }
+  .view-toggle button.active{background:var(--gold);color:#1a1305;border-color:var(--gold);}
+
+  /* scoreboard tally */
+  .tally{
+    display:flex;gap:14px;font-family:var(--font-mono);font-size:13px;
+  }
+  .tally .n{font-size:18px;font-weight:700;}
+  .tally .present .n{color:var(--present);}
+  .tally .absent .n{color:var(--absent);}
+  .tally .excused .n{color:var(--excused);}
+  .tally .unset .n{color:var(--muted);}
+
+  /* roster */
+  .roster{display:flex;flex-direction:column;gap:6px;}
+  .prow{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+    padding:9px 12px;
+  }
+  .prow .pname{font-size:14px;font-weight:500;}
+  .statusbtns{display:flex;gap:6px;}
+  .sbtn{
+    width:34px;height:30px;border-radius:6px;border:1px solid var(--line);
+    background:transparent;color:var(--muted);font-size:12px;font-weight:700;
+    cursor:pointer;font-family:var(--font-mono);transition:all .12s;
+  }
+  .sbtn.on-p{background:var(--present);border-color:var(--present);color:#08221c;}
+  .sbtn.on-a{background:var(--absent);border-color:var(--absent);color:#2b0a08;}
+  .sbtn.on-e{background:var(--excused);border-color:var(--excused);color:#241a04;}
+
+  .bilan-link{
+    background:transparent;border:1px solid var(--line);color:var(--gold);
+    padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;
+  }
+  .empty-hint{color:var(--muted);font-size:13px;text-align:center;padding:60px 20px;}
+
+  /* bilan */
+  table.bilan{width:100%;border-collapse:collapse;font-size:13px;}
+  table.bilan th{
+    text-align:left;font-family:var(--font-mono);font-size:11px;
+    color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+    padding:8px 10px;border-bottom:1px solid var(--line);
+  }
+  table.bilan td{padding:9px 10px;border-bottom:1px solid var(--line);}
+  table.bilan tr:hover td{background:var(--panel-2);}
+  .bar-wrap{background:#26374a;border-radius:4px;height:8px;width:100%;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--present);}
+  .bilan-note{color:var(--muted);font-size:12px;margin-bottom:12px;}
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+
+  .footer-note{color:var(--muted);font-size:11px;text-align:center;margin-top:22px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <div class="club">ASVB <span>Bièville</span>-Beuville</div>
+      <div class="subtitle">Feuille de présences — Entraînements &amp; Matchs · Volley-Ball</div>
+    </div>
+    <div class="season-tag">SAISON 2025 / 2026</div>
+  </header>
+
+  <div class="teamtabs">
+    <div class="teamtab active" data-team="team1" id="tab-team1">
+      <div class="t-name">Équipe 1</div>
+      <div class="t-div">DSUP · lundi 20h30</div>
+    </div>
+    <div class="teamtab" data-team="team2" id="tab-team2">
+      <div class="t-name">Équipe 2</div>
+      <div class="t-div">D3A · lundi 20h30</div>
+    </div>
+    <div class="teamtab" data-team="commun" id="tab-commun">
+      <div class="t-name">Vue commune</div>
+      <div class="t-div">Éq.1 + Éq.2 ensemble</div>
+    </div>
+  </div>
+
+  <div class="toolbar" id="toolbar"></div>
+  <div class="panel" id="bilanPanel" style="display:none;"></div>
+  <div class="timeline" id="timeline"></div>
+
+  <div class="footer-note">Les données de présence sont partagées entre tous les utilisateurs de cet outil (staff du club). Domicile = Halle des sports, Colleville-Montgomery.</div>
+</div>
+
+<script>
+const ROSTERS = {
+  team1: ["Elise Nguyen","Christelle Bataille","Aniko Kiss","Stéphanie Jouan","Marc Bouquiaux","François Condominas","Guillaume Hannebique","Anthony Marie","Luan Nguyen","Ludovic Theault","Marin Salmi"],
+  team2: ["Luce Barbançon","Cécile Esbri","Anne Hannebique","Karine Theault","Adrien Chenneviere","Yvan Salomez","Ronan Danno","Mickael Lamarque","Baptiste Schiel","Philippe Suchet","Arthur Ruaudel","Lucien Fort"]
+};
+
+const TEAM_LABEL = {team1:"Équipe 1 · DSUP", team2:"Équipe 2 · D3A"};
+
+// Weeks with a probable school-holiday break (informational only, still defaults to training)
+const HOLIDAY_HINT = {
+  "2025-10-20":"Vacances de la Toussaint (à confirmer)",
+  "2025-10-27":"Vacances de la Toussaint (à confirmer)",
+  "2025-12-22":"Vacances de Noël (à confirmer)",
+  "2025-12-29":"Vacances de Noël (à confirmer)",
+  "2026-02-16":"Vacances d'hiver (à confirmer)",
+  "2026-02-23":"Vacances d'hiver (à confirmer)",
+  "2026-04-06":"Vacances de printemps (à confirmer)",
+  "2026-04-13":"Vacances de printemps (à confirmer)",
+  "2026-04-20":"Vacances de printemps (à confirmer)"
+};
+
+const MONTHS_FR = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+
+function fmtDate(iso){
+  const d = new Date(iso+"T00:00:00");
+  return {day: d.getDate(), month: d.getMonth(), monthLabel: MONTHS_FR[d.getMonth()], year: d.getFullYear(), weekday:d.getDay()};
+}
+const DAYNAME = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
+
+/*
+  Modèle de données : une liste chronologique de séances par équipe.
+  Chaque séance a une date réelle (pas forcément un lundi) car pour les
+  matchs à l'extérieur, le jour de match est celui du club qui REÇOIT
+  (vérifié dans le Répertoire UFOLEP). Quand ce jour n'est pas le lundi,
+  l'entraînement du lundi est CONSERVÉ et le match s'ajoute en séance
+  séparée. "replaces" = true veut dire que la séance remplace
+  l'entraînement du lundi (match à domicile, ou match extérieur qui tombe
+  un lundi).
+*/
+const GYM_COLLEVILLE = "Halle des sports, Colleville-Montgomery";
+
+function S(date, type, extra){ return Object.assign({date, type}, extra||{}); }
+
+const SESSIONS = {
+team1: [ // DSUP
+  S("2025-10-06","match",{opponent:"Fleury/Orne 1",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true}),
+  S("2025-10-13","entrainement",{}),
+  S("2025-10-14","match",{opponent:"Forum Mouen",home:false,time:"20h30",place:"Gymnase de Mouen, rue de l'Église, 14790 Mouen",replaces:false}),
+  S("2025-10-20","entrainement",{note:HOLIDAY_HINT["2025-10-20"]}),
+  S("2025-10-27","entrainement",{note:HOLIDAY_HINT["2025-10-27"]}),
+  S("2025-11-03","match",{opponent:"Ifs 1",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true}),
+  S("2025-11-10","entrainement",{}),
+  S("2025-11-17","entrainement",{}),
+  S("2025-11-19","match",{opponent:"Fontaine Etoupefour 1",home:false,time:"20h30",place:"Gymnase Multisports (face collège Verlaine), rue Bougy, 14210 Évrecy",replaces:false}),
+  S("2025-11-24","match",{opponent:"Colleville Montgomery",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true}),
+  S("2025-12-01","match",{opponent:"Carpiquet 2",home:false,time:"20h30",place:"Salle polyvalente, 7 rue Marie Thérèse Nicolle, 14650 Carpiquet",replaces:true,note:"Carpiquet 2 reçoit aussi le lundi (répertoire) — ce match remplace directement l'entraînement."}),
+  S("2025-12-08","coupe",{label:"Coupe du Calvados — 1er tour"}),
+  S("2025-12-15","coupe",{label:"Coupe du Calvados — Barrages"}),
+  S("2025-12-22","entrainement",{note:HOLIDAY_HINT["2025-12-22"]}),
+  S("2025-12-29","entrainement",{note:HOLIDAY_HINT["2025-12-29"]}),
+  S("2026-01-05","bye",{}),
+  S("2026-01-12","entrainement",{}),
+  S("2026-01-14","match",{opponent:"Carpiquet 1",home:false,time:"20h30",place:"Salle Omnisports Robert Giard, 7 av. Charles de Gaulle, 14650 Carpiquet",replaces:false}),
+  S("2026-01-19","match",{opponent:"Caen Sport Demi Lune",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true}),
+  S("2026-01-26","coupe",{label:"Coupe du Calvados — 2e tour"}),
+  S("2026-02-02","entrainement",{}),
+  S("2026-02-05","match",{opponent:"Fleury/Orne 1",home:false,time:"20h45",place:"Salle polyvalente, 19 rue François Mitterrand, 14123 Fleury/Orne",replaces:false}),
+  S("2026-02-09","match",{opponent:"Forum Mouen",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true}),
+  S("2026-02-16","entrainement",{note:HOLIDAY_HINT["2026-02-16"]}),
+  S("2026-02-23","entrainement",{note:HOLIDAY_HINT["2026-02-23"]}),
+  S("2026-03-02","entrainement",{}),
+  S("2026-03-05","match",{opponent:"Ifs 1",home:false,time:"20h30",place:"Gymnase Alice Millet, chemin du Val, 14123 Ifs",replaces:false}),
+  S("2026-03-09","match",{opponent:"Fontaine Etoupefour 1",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true}),
+  S("2026-03-16","entrainement",{}),
+  S("2026-03-19","match",{opponent:"Colleville Montgomery",home:false,time:"20h30",place:GYM_COLLEVILLE+" (même salle, jour du club Colleville)",replaces:false}),
+  S("2026-03-23","match",{opponent:"Carpiquet 2",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true}),
+  S("2026-03-30","bye",{}),
+  S("2026-04-06","entrainement",{note:HOLIDAY_HINT["2026-04-06"]}),
+  S("2026-04-13","entrainement",{note:HOLIDAY_HINT["2026-04-13"]}),
+  S("2026-04-20","entrainement",{note:HOLIDAY_HINT["2026-04-20"]}),
+  S("2026-04-27","coupe",{label:"Coupe du Calvados — 3e tour (période du 27/04 au 13/05)"}),
+  S("2026-05-04","coupe",{label:"Coupe du Calvados — 3e tour (période du 27/04 au 13/05)"}),
+  S("2026-05-11","entrainement",{}),
+  S("2026-05-18","match",{opponent:"Carpiquet 1",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true,note:"Barrage croisé d'accession possible selon classement final — à confirmer",confirmed:false}),
+  S("2026-05-25","entrainement",{}),
+  S("2026-06-01","entrainement",{}),
+  S("2026-06-05","match",{opponent:"Caen Sport Demi Lune",home:false,time:"20h00",place:"Gymnase Albert 1er, rue Albert 1er, 14000 Caen",replaces:false,note:"Match de classement possible selon classement final — à confirmer",confirmed:false}),
+  S("2026-06-08","coupe",{label:"Coupe du Calvados — 4e tour"}),
+  S("2026-06-15","entrainement",{})
+],
+team2: [ // D3A
+  S("2025-10-06","match",{opponent:"Pont l'Évêque 2",home:false,time:"20h00",place:"Gymnase Mosagna, 17 rue Gustave Flaubert, 14130 Pont-l'Évêque (ou Blangy-le-Château)",replaces:true,note:"Jour non confirmé pour l'équipe 2 de Pont l'Évêque dans le répertoire (l'équipe 1 joue le lundi 20h00) — à vérifier auprès du club.",confirmed:false}),
+  S("2025-10-13","entrainement",{}),
+  S("2025-10-15","match",{opponent:"Ouistreham 4",home:false,time:"20h15",place:"Salle Legoupil, 85 av. du Général Leclerc, 14150 Ouistreham",replaces:false}),
+  S("2025-10-20","entrainement",{note:HOLIDAY_HINT["2025-10-20"]}),
+  S("2025-10-27","entrainement",{note:HOLIDAY_HINT["2025-10-27"]}),
+  S("2025-11-03","entrainement",{}),
+  S("2025-11-04","match",{opponent:"Saint Pierre en Auge 2",home:false,time:"?",place:"Gymnase Dénoly, 14170 Saint-Pierre-en-Auge",replaces:false,note:"Jour non confirmé au répertoire pour l'équipe 2 (à vérifier auprès du club, probablement mardi ou vendredi comme l'équipe 1).",confirmed:false}),
+  S("2025-11-10","entrainement",{}),
+  S("2025-11-17","entrainement",{}),
+  S("2025-11-20","match",{opponent:"Falaise 4",home:false,time:"20h30",place:"Gymnase de la Crosse, av. de la Crosse, 14700 Falaise",replaces:false}),
+  S("2025-11-24","entrainement",{}),
+  S("2025-11-25","match",{opponent:"Saint Pierre en Auge 1",home:false,time:"20h30 ou 20h15",place:"Gymnase Dénoly, 14170 Saint-Pierre-en-Auge",replaces:false,note:"Le répertoire indique deux créneaux possibles pour cette équipe : mardi 20h30 ou vendredi 20h15 — à confirmer avec le club (date du vendredi : 28/11).",confirmed:false}),
+  S("2025-12-01","match",{opponent:"Fontaine Etoupefour 3",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true}),
+  S("2025-12-08","coupe",{label:"Coupe du Calvados — 1er tour"}),
+  S("2025-12-15","coupe",{label:"Coupe du Calvados — Barrages"}),
+  S("2025-12-22","entrainement",{note:HOLIDAY_HINT["2025-12-22"]}),
+  S("2025-12-29","entrainement",{note:HOLIDAY_HINT["2025-12-29"]}),
+  S("2026-01-05","match",{opponent:"Caen Ganil 2",home:false,time:"21h00 (RDV 20h40)",place:"Rue de la Haute Bony, 14 Rots",replaces:true,note:"Caen Ganil 2 reçoit aussi le lundi — mais match à 21h00 (rendez-vous 20h40), donc un peu plus tard que l'horaire habituel."}),
+  S("2026-01-12","entrainement",{}),
+  S("2026-01-19","entrainement",{}),
+  S("2026-01-26","coupe",{label:"Coupe du Calvados — 2e tour"}),
+  S("2026-02-02","match",{opponent:"Pont l'Évêque 2",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true}),
+  S("2026-02-09","match",{opponent:"Ouistreham 4",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true}),
+  S("2026-02-16","entrainement",{note:HOLIDAY_HINT["2026-02-16"]}),
+  S("2026-02-23","entrainement",{note:HOLIDAY_HINT["2026-02-23"]}),
+  S("2026-03-02","match",{opponent:"Saint Pierre en Auge 2",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true}),
+  S("2026-03-09","match",{opponent:"Falaise 4",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true}),
+  S("2026-03-16","match",{opponent:"Saint Pierre en Auge 1",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true}),
+  S("2026-03-23","entrainement",{}),
+  S("2026-03-25","match",{opponent:"Fontaine Etoupefour 3",home:false,time:"20h30",place:"Gymnase Multisports (face collège Verlaine), rue Bougy, 14210 Évrecy",replaces:false}),
+  S("2026-03-30","match",{opponent:"Caen Ganil 2",home:true,time:"20h30",place:GYM_COLLEVILLE,replaces:true}),
+  S("2026-04-06","entrainement",{note:HOLIDAY_HINT["2026-04-06"]}),
+  S("2026-04-13","entrainement",{note:HOLIDAY_HINT["2026-04-13"]}),
+  S("2026-04-20","entrainement",{note:HOLIDAY_HINT["2026-04-20"]}),
+  S("2026-04-27","coupe",{label:"Coupe du Calvados — 3e tour (période du 27/04 au 13/05)"}),
+  S("2026-05-04","coupe",{label:"Coupe du Calvados — 3e tour (période du 27/04 au 13/05)"}),
+  S("2026-05-11","entrainement",{}),
+  S("2026-05-18","match",{opponent:"Adversaire à confirmer",home:null,time:"?",place:"À confirmer",replaces:true,note:"Barrages croisés d'accession (1er A vs 2e B, etc.) — jour/adversaire/lieu selon classement final.",confirmed:false}),
+  S("2026-05-25","entrainement",{}),
+  S("2026-06-01","match",{opponent:"Adversaire à confirmer",home:null,time:"?",place:"À confirmer",replaces:true,note:"Matchs de classement — jour/adversaire/lieu selon classement final.",confirmed:false}),
+  S("2026-06-08","coupe",{label:"Coupe du Calvados — 4e tour"}),
+  S("2026-06-15","entrainement",{})
+]
+};
+
+function sessionLabel(s){
+  if(s.type==="match"){
+    const conf = s.confirmed===false ? " ⚠" : "";
+    if(s.home===true) return {lbl:"Match — "+s.opponent+conf, badge:"DOM", badgeClass:"dom"};
+    if(s.home===false) return {lbl:"Match — "+s.opponent+conf, badge: s.replaces?"EXT (lun.)":"EXT", badgeClass:"ext"};
+    return {lbl:"Match — "+s.opponent+conf, badge:"?", badgeClass:"ext"};
+  }
+  if(s.type==="coupe") return {lbl:s.label, badge:"COUPE", badgeClass:"coupe"};
+  if(s.type==="bye") return {lbl:"Exempt (pas de match)", badge:"REPOS", badgeClass:"bye"};
+  return {lbl:"Entraînement", badge:"ENTR.", badgeClass:"entr"};
+}
+
+let currentTeam = "team1";
+let expandedKey = null; // "team:date" de la ligne actuellement dépliée (accordéon, une seule à la fois)
+let bilanOpenTeam = null; // team dont le bilan est affiché dans #bilanPanel, ou null
+
+async function toggleRow(rowEl, team, iso){
+  const key = team+":"+iso;
+  const existingDetail = rowEl.nextElementSibling && rowEl.nextElementSibling.classList.contains("detail") ? rowEl.nextElementSibling : null;
+
+  // Ferme toute autre ligne ouverte (accordéon : une seule à la fois)
+  document.querySelectorAll(".detail").forEach(d=>d.remove());
+  document.querySelectorAll(".sess.selected").forEach(r=>r.classList.remove("selected"));
+
+  if(existingDetail && expandedKey===key){
+    expandedKey = null; // on vient de la fermer
+    return;
+  }
+
+  expandedKey = key;
+  rowEl.classList.add("selected");
+  const detail = document.createElement("div");
+  detail.className = "detail";
+  rowEl.insertAdjacentElement("afterend", detail);
+  await renderSessionDetail(detail, team, iso);
+}
+
+function renderTimeline(){
+  const el = document.getElementById("timeline");
+  el.innerHTML = "";
+  let lastMonth = null;
+  const sessions = SESSIONS[currentTeam];
+  sessions.forEach(s=>{
+    const iso = s.date;
+    const f = fmtDate(iso);
+    const key = f.year+"-"+f.month;
+    if(key!==lastMonth){
+      lastMonth = key;
+      const ml = document.createElement("div");
+      ml.className="month-label";
+      ml.textContent = f.monthLabel+" "+f.year;
+      el.appendChild(ml);
+    }
+    const {lbl, badge, badgeClass} = sessionLabel(s);
+    const rowKey = currentTeam+":"+iso;
+    const row = document.createElement("div");
+    row.className = "sess"+(expandedKey===rowKey?" selected":"");
+    row.dataset.date = iso;
+    row.innerHTML = `
+      <div class="d">${String(f.day).padStart(2,"0")}</div>
+      <div class="info">
+        <div class="lbl">${lbl}</div>
+        <div class="sub">${DAYNAME[f.weekday]}${s.note && badgeClass==="entr" ? " · "+s.note : ""}</div>
+      </div>
+      <div class="badge ${badgeClass}">${badge}</div>
+    `;
+    row.addEventListener("click", ()=> toggleRow(row, currentTeam, iso));
+    el.appendChild(row);
+    if(expandedKey===rowKey){
+      const detail = document.createElement("div");
+      detail.className = "detail";
+      el.appendChild(detail);
+      renderSessionDetail(detail, currentTeam, iso);
+    }
+  });
+}
+
+function findSession(team, iso){
+  return SESSIONS[team].find(s=>s.date===iso) || null;
+}
+
+function storageKey(team, iso){ return "attendance:"+team+":"+iso; }
+
+async function loadAttendance(team, iso){
+  try{
+    const res = await window.storage.get(storageKey(team, iso), true);
+    return res ? JSON.parse(res.value) : {};
+  }catch(e){ return {}; }
+}
+async function saveAttendance(team, iso, data){
+  try{
+    await window.storage.set(storageKey(team, iso), JSON.stringify(data), true);
+  }catch(e){ console.error("Erreur de sauvegarde", e); }
+}
+
+function tallyHTML(data, roster){
+  let p=0,a=0,e=0,u=0;
+  roster.forEach(name=>{
+    const s = data[name];
+    if(s==="P") p++; else if(s==="A") a++; else if(s==="E") e++; else u++;
+  });
+  return `
+    <div class="tally">
+      <div class="present">PRÉS. <span class="n">${p}</span></div>
+      <div class="absent">ABS. <span class="n">${a}</span></div>
+      <div class="excused">EXC. <span class="n">${e}</span></div>
+      <div class="unset">— <span class="n">${u}</span></div>
+    </div>
+  `;
+}
+
+function sessionHeadHTML(team, s){
+  const f = fmtDate(s.date);
+  const dayName = DAYNAME[f.weekday];
+  let title, metaHTML, noteHTML = "";
+  if(s.type==="match"){
+    const where = s.home===true ? s.place : (s.home===false ? s.place : (s.place||"Lieu à confirmer"));
+    title = "Match vs "+s.opponent;
+    metaHTML = `<span><b>${dayName} ${f.day} ${f.monthLabel} ${f.year}</b></span><span>${s.time||""}</span><span>${s.home===true?"Domicile":(s.home===false?"Extérieur":"Domicile/Extérieur à confirmer")}</span><span>${where}</span>`;
+    if(s.note) noteHTML = `<div class="note">${s.note}</div>`;
+  } else if(s.type==="coupe"){
+    title = s.label;
+    metaHTML = `<span><b>${dayName} ${f.day} ${f.monthLabel} ${f.year}</b></span><span>Horaire/adversaire selon tirage</span>`;
+    noteHTML = `<div class="note">Coupe du Calvados : n'a lieu que si l'équipe est encore qualifiée. Vérifier le tirage avant l'entraînement.</div>`;
+  } else if(s.type==="bye"){
+    title = "Semaine sans match (exempt)";
+    metaHTML = `<span><b>${dayName} ${f.day} ${f.monthLabel} ${f.year}</b></span><span>Entraînement normal 20h30–22h30</span>`;
+  } else {
+    title = "Entraînement";
+    metaHTML = `<span><b>${dayName} ${f.day} ${f.monthLabel} ${f.year}</b></span><span>20h30–22h30</span><span>${GYM_COLLEVILLE}</span>`;
+    if(s.note) noteHTML = `<div class="note">${s.note}</div>`;
+  }
+  return `<div style="font-family:var(--font-mono);font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">${TEAM_LABEL[team]}</div><h2>${title}</h2><div class="sess-meta">${metaHTML}</div>${noteHTML}`;
+}
+
+function buildRosterBlock(team, iso, data){
+  const roster = ROSTERS[team];
+  const block = document.createElement("div");
+  block.innerHTML = `<div class="roster" id="roster-${team}"></div>`;
+  const rosterEl = block.querySelector(`#roster-${team}`);
+  roster.forEach(name=>{
+    const status = data[name] || null;
+    const row = document.createElement("div");
+    row.className = "prow";
+    row.innerHTML = `
+      <div class="pname">${name}</div>
+      <div class="statusbtns">
+        <button class="sbtn ${status==="P"?"on-p":""}" data-s="P" title="Présent">P</button>
+        <button class="sbtn ${status==="A"?"on-a":""}" data-s="A" title="Absent">A</button>
+        <button class="sbtn ${status==="E"?"on-e":""}" data-s="E" title="Excusé">E</button>
+      </div>
+    `;
+    row.querySelectorAll(".sbtn").forEach(b=>{
+      b.addEventListener("click", async ()=>{
+        const s = b.dataset.s;
+        const cur = data[name];
+        data[name] = (cur===s) ? undefined : s;
+        if(data[name]===undefined) delete data[name];
+        await saveAttendance(team, iso, data);
+        row.querySelectorAll(".sbtn").forEach(bb=>bb.classList.remove("on-p","on-a","on-e"));
+        if(data[name]) row.querySelector(`[data-s="${data[name]}"]`).classList.add("on-"+data[name].toLowerCase());
+        const tallyEl = document.getElementById("tally-"+team);
+        if(tallyEl) tallyEl.innerHTML = tallyHTML(data, roster);
+      });
+    });
+    rosterEl.appendChild(row);
+  });
+  return block;
+}
+
+/* Affiche le détail + la feuille de présence d'UNE séance (team, date) dans #panel */
+async function renderSessionDetail(panel, team, iso){
+  const s = findSession(team, iso);
+  if(!s){ panel.innerHTML = '<div class="empty-hint">Aucune séance à cette date.</div>'; return; }
+  const roster = ROSTERS[team];
+  const data = await loadAttendance(team, iso);
+  panel.innerHTML = `
+    <div class="sess-head">${sessionHeadHTML(team, s)}</div>
+    <div class="toprow">
+      <div id="tally-${team}">${tallyHTML(data, roster)}</div>
+      <button class="bilan-link" data-team="${team}">📊 Bilan saison de cette équipe</button>
+    </div>
+  `;
+  panel.querySelector(".bilan-link").addEventListener("click", ()=> openBilan(team));
+  panel.appendChild(buildRosterBlock(team, iso, data));
+}
+
+function openBilan(team){
+  const bp = document.getElementById("bilanPanel");
+  if(bilanOpenTeam===team){
+    bilanOpenTeam = null;
+    bp.style.display = "none";
+    bp.innerHTML = "";
+    renderToolbar();
+    return;
+  }
+  bilanOpenTeam = team;
+  bp.style.display = "block";
+  renderToolbar();
+  renderBilan(team);
+}
+
+async function renderBilan(team){
+  const panel = document.getElementById("bilanPanel");
+  const roster = ROSTERS[team];
+  const allDates = SESSIONS[team].map(s=>s.date);
+  panel.innerHTML = `
+    <div class="sess-head">
+      <h2>Bilan de présence — ${TEAM_LABEL[team]}</h2>
+      <div class="sess-meta"><span>Cumul sur toutes les séances déjà renseignées</span></div>
+    </div>
+    <div class="bilan-note">Chargement…</div>
+  `;
+
+  const counts = {};
+  roster.forEach(n=> counts[n] = {P:0,A:0,E:0,total:0});
+  let sessionsCounted = 0;
+
+  for(const iso of allDates){
+    let res;
+    try{
+      res = await window.storage.get(storageKey(team, iso), true);
+    }catch(e){ res = null; }
+    if(!res) continue;
+    let data;
+    try{ data = JSON.parse(res.value); }catch(e){ continue; }
+    if(!data || Object.keys(data).length===0) continue;
+    sessionsCounted++;
+    roster.forEach(name=>{
+      const s = data[name];
+      if(s==="P"||s==="A"||s==="E"){
+        counts[name][s]++;
+        counts[name].total++;
+      }
+    });
+  }
+
+  const note = panel.querySelector(".bilan-note");
+  if(sessionsCounted===0){
+    note.textContent = "Aucune séance renseignée pour l'instant.";
+    return;
+  }
+  note.textContent = `${sessionsCounted} séance(s) renseignée(s) sur ${allDates.length} possibles.`;
+
+  const tbl = document.createElement("table");
+  tbl.className = "bilan";
+  tbl.innerHTML = `
+    <thead><tr><th>Joueur·se</th><th>Présent</th><th>Absent</th><th>Excusé</th><th>Taux de présence</th></tr></thead>
+    <tbody></tbody>
+  `;
+  const tbody = tbl.querySelector("tbody");
+  roster.forEach(name=>{
+    const c = counts[name];
+    const rate = c.total>0 ? Math.round((c.P/c.total)*100) : 0;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${name}</td>
+      <td>${c.P}</td>
+      <td>${c.A}</td>
+      <td>${c.E}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="bar-wrap"><div class="bar-fill" style="width:${rate}%"></div></div>
+          <span style="font-family:var(--font-mono);font-size:12px;width:36px;">${rate}%</span>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  panel.appendChild(tbl);
+}
+
+/* ===== Vue commune : une ligne par événement, colonne équipe ===== */
+function mergedEvents(){
+  const rows = [];
+  SESSIONS.team1.forEach(s=> rows.push({team:"team1", session:s}));
+  SESSIONS.team2.forEach(s=> rows.push({team:"team2", session:s}));
+  rows.sort((a,b)=>{
+    if(a.session.date !== b.session.date) return a.session.date < b.session.date ? -1 : 1;
+    return a.team < b.team ? -1 : 1; // team1 avant team2 à date égale
+  });
+  return rows;
+}
+
+function renderTimelineCommun(){
+  const el = document.getElementById("timeline");
+  el.innerHTML = "";
+  let lastMonth = null;
+  mergedEvents().forEach(({team, session:s})=>{
+    const iso = s.date;
+    const f = fmtDate(iso);
+    const key = f.year+"-"+f.month;
+    if(key!==lastMonth){
+      lastMonth = key;
+      const ml = document.createElement("div");
+      ml.className="month-label";
+      ml.textContent = f.monthLabel+" "+f.year;
+      el.appendChild(ml);
+    }
+    const {lbl, badge, badgeClass} = sessionLabel(s);
+    const rowKey = team+":"+iso;
+    const row = document.createElement("div");
+    row.className = "sess"+(expandedKey===rowKey?" selected":"");
+    row.innerHTML = `
+      <div class="d">${String(f.day).padStart(2,"0")}</div>
+      <div class="teamcol">${team==="team1"?"Éq.1":"Éq.2"}</div>
+      <div class="info">
+        <div class="lbl">${lbl}</div>
+        <div class="sub">${DAYNAME[f.weekday]}</div>
+      </div>
+      <div class="badge ${badgeClass}">${badge}</div>
+    `;
+    row.addEventListener("click", ()=> toggleRow(row, team, iso));
+    el.appendChild(row);
+    if(expandedKey===rowKey){
+      const detail = document.createElement("div");
+      detail.className = "detail";
+      el.appendChild(detail);
+      renderSessionDetail(detail, team, iso);
+    }
+  });
+}
+
+function renderToolbar(){
+  const tb = document.getElementById("toolbar");
+  if(currentTeam==="commun"){
+    tb.innerHTML = `
+      <button id="bilan-team1" class="${bilanOpenTeam==="team1"?"active":""}">📊 Bilan Équipe 1</button>
+      <button id="bilan-team2" class="${bilanOpenTeam==="team2"?"active":""}">📊 Bilan Équipe 2</button>
+    `;
+    tb.querySelector("#bilan-team1").addEventListener("click", ()=> openBilan("team1"));
+    tb.querySelector("#bilan-team2").addEventListener("click", ()=> openBilan("team2"));
+  } else {
+    tb.innerHTML = `<button id="bilan-current" class="${bilanOpenTeam===currentTeam?"active":""}">📊 Bilan saison — ${TEAM_LABEL[currentTeam]}</button>`;
+    tb.querySelector("#bilan-current").addEventListener("click", ()=> openBilan(currentTeam));
+  }
+}
+
+document.getElementById("tab-team1").addEventListener("click", ()=> switchTeam("team1"));
+document.getElementById("tab-team2").addEventListener("click", ()=> switchTeam("team2"));
+document.getElementById("tab-commun").addEventListener("click", ()=> switchTeam("commun"));
+
+function switchTeam(team){
+  currentTeam = team;
+  expandedKey = null;
+  bilanOpenTeam = null;
+  document.getElementById("bilanPanel").style.display = "none";
+  document.getElementById("bilanPanel").innerHTML = "";
+  document.getElementById("tab-team1").classList.toggle("active", team==="team1");
+  document.getElementById("tab-team2").classList.toggle("active", team==="team2");
+  document.getElementById("tab-commun").classList.toggle("active", team==="commun");
+  renderToolbar();
+  if(team==="commun") renderTimelineCommun(); else renderTimeline();
+}
+
+renderToolbar();
+renderTimeline();
+</script>
+</body>
+</html>
