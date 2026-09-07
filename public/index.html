@@ -1,0 +1,2051 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASVB Bieville-Beuville — Présences</title>
+<style>
+  :root{
+    --font-display: 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: 'SF Mono', 'Consolas', 'Menlo', 'Courier New', monospace;
+    --bg:#0F1720;
+    --panel:#16212E;
+    --panel-2:#1C2A39;
+    --line:#2A3B4E;
+    --ink:#EEF1F4;
+    --muted:#8CA0B4;
+    --gold:#F0B429;
+    --blue:#2E7DD1;
+    --present:#3FA796;
+    --absent:#E2574C;
+    --dispo:#F0B429;
+    --unset:#3A4A5D;
+    --team1:#4C8DFF;
+    --team2:#D9739A;
+  }
+  /* ===== Mode clair (essai) — mêmes variables, palette inversée ===== */
+  body.light-theme{
+    --bg:#F4F5F8;
+    --panel:#FFFFFF;
+    --panel-2:#F0F2F6;
+    --line:#DCE1E8;
+    --ink:#1C2530;
+    --muted:#6A7684;
+    --gold:#B8790A;
+    --blue:#2E7DD1;
+    --present:#238370;
+    --absent:#C43D31;
+    --dispo:#B8790A;
+    --unset:#C7CDD6;
+    --team1:#2E68C4;
+    --team2:#B84C79;
+  }
+  body.light-theme{ box-shadow:none; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  button, .teamtab, .gear-tab, .sess, .icon-btn, .sbtn{-webkit-tap-highlight-color:transparent;outline:none;}
+  button:focus, .teamtab:focus, .sess:focus{outline:none;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+    transition:background-color .2s ease, color .2s ease;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 18px 60px;}
+
+  /* ===== Header / scoreboard ===== */
+  header{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:2px solid var(--gold);
+    padding-bottom:8px;margin-bottom:10px;flex-wrap:wrap;gap:8px;
+  }
+  .club{
+    font-family:var(--font-display);font-weight:800;
+    font-size:clamp(18px,3vw,26px);
+    letter-spacing:0.5px;
+    line-height:1;
+    text-transform:uppercase;
+  }
+  .club span{color:var(--gold);}
+  .subtitle{color:var(--muted);font-size:11px;margin-top:2px;letter-spacing:0.3px;}
+  .season-tag{
+    font-family:var(--font-mono);
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--gold);
+    padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;
+  }
+  .theme-toggle-btn{
+    background:var(--panel-2);border:1px solid var(--line);
+    border-radius:4px;width:28px;height:28px;font-size:14px;
+    cursor:pointer;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .theme-toggle-btn:hover{border-color:var(--gold);}
+
+  /* ===== Team tabs ===== */
+  .teamtabs{display:flex;gap:8px;margin-bottom:6px;}
+  .teamtab{
+    flex:1;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:7px 12px;
+    cursor:pointer;
+    transition:all .15s ease;
+    position:relative;
+    overflow:hidden;
+  }
+  .teamtab.active{border-color:var(--gold);background:var(--panel-2);}
+  .teamtab[data-team="team1"].active{border-color:var(--team1);}
+  .teamtab[data-team="team1"].active .t-name{color:var(--team1);}
+  .teamtab[data-team="team2"].active{border-color:var(--team2);}
+  .teamtab[data-team="team2"].active .t-name{color:var(--team2);}
+  .teamtab .t-name{font-family:var(--font-display);font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:.3px;}
+  .teamtab .t-div{color:var(--muted);font-size:10px;font-family:var(--font-mono);margin-top:1px;}
+  .teamtab.active .t-name{color:var(--gold);}
+
+  /* ===== Toolbar ===== */
+  .toolbar{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;}
+  .toolbar button{
+    background:var(--panel);border:1px solid var(--line);color:var(--ink);
+    padding:6px 11px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
+  }
+  .toolbar button.active{background:var(--gold);color:#1a1305;border-color:var(--gold);}
+
+  /* ===== Timeline (liste pleine largeur, accordéon) ===== */
+  .timeline{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .month-label{
+    background:rgba(240,180,41,0.14);
+    color:var(--gold);
+    font-family:var(--font-mono);
+    font-weight:800;
+    font-size:14px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    padding:10px 14px;
+    border-top:1px solid rgba(240,180,41,0.35);
+    border-bottom:1px solid rgba(240,180,41,0.35);
+  }
+  .timeline > .month-label:first-child{border-top:none;}
+  .sess{
+    display:flex;flex-direction:column;gap:4px;
+    padding:10px 14px;
+    cursor:pointer;
+    border-bottom:1px solid var(--line);
+    transition:background .12s;
+  }
+  .sess:hover{background:var(--panel-2);}
+  .sess.selected{background:var(--panel-2);border-left:3px solid var(--gold);}
+  .sess-top{display:flex;align-items:flex-start;gap:10px;}
+  .sess-bottom{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .sess .d{
+    font-family:var(--font-mono);font-size:13px;font-weight:600;
+    width:28px;color:var(--ink);flex-shrink:0;padding-top:1px;
+  }
+  .sess .teamcol{
+    font-family:var(--font-mono);font-size:10px;font-weight:700;
+    border-radius:4px;padding:2px 6px;flex-shrink:0;text-align:center;
+  }
+  .sess .teamcol.t-team1{color:var(--team1);background:rgba(76,141,255,0.12);border:1px solid rgba(76,141,255,0.35);}
+  .sess .teamcol.t-team2{color:var(--team2);background:rgba(217,115,154,0.12);border:1px solid rgba(217,115,154,0.35);}
+  .sess .teamcol.t-both{color:var(--gold);background:rgba(240,180,41,0.12);border:1px solid rgba(240,180,41,0.35);}
+  .common-tag{font-size:12px;}
+  .sess .lbl{font-size:13px;font-weight:600;flex:1;min-width:0;line-height:1.35;}
+  .sess .sub{font-size:11px;color:var(--muted);flex:1;min-width:0;}
+  .row-time{font-size:13px;font-weight:800;color:var(--gold);font-family:var(--font-mono);}
+  .rowcount{
+    font-family:var(--font-mono);font-size:15px;font-weight:700;
+    display:flex;gap:8px;flex-shrink:0;margin-left:auto;align-items:center;
+  }
+  .rowcount .rc-m{color:var(--team1);}
+  .rowcount .rc-f{color:var(--team2);}
+  .rowcount .rc-total{color:var(--gold);}
+  .suff-badge{
+    font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0;
+  }
+  .suff-badge.ok{background:rgba(63,167,150,0.15);color:var(--present);border:1px solid rgba(63,167,150,0.45);}
+  .suff-badge.warn{background:rgba(226,87,76,0.15);color:var(--absent);border:1px solid rgba(226,87,76,0.45);}
+  .save-error-msg{
+    font-size:12px;font-weight:600;color:var(--absent);
+    background:rgba(226,87,76,0.1);border:1px solid rgba(226,87,76,0.35);
+    border-radius:6px;padding:5px 10px;margin-top:-2px;
+    animation:fadeIn .15s ease;
+  }
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  .badge{
+    font-size:10px;font-weight:700;letter-spacing:.4px;
+    padding:2px 7px;border-radius:20px;text-transform:uppercase;flex-shrink:0;
+  }
+  .badge.entr{background:#22364a;color:#8fb4d9;}
+  .badge.dom{background:#1f4a3d;color:#5fd6ae;}
+  .badge.ext{background:#4a2f1f;color:#e8a35f;}
+  .badge.coupe{background:#4a3d1f;color:var(--gold);}
+  .badge.bye{background:#333;color:#999;}
+
+  /* ===== Main panel (bilan + détail déplié inline) ===== */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 20px 22px;
+    margin-bottom:16px;
+  }
+  .detail{
+    background:var(--panel-2);
+    border-top:2px solid var(--gold);
+    border-bottom:1px solid var(--line);
+    padding:12px 14px 14px;
+  }
+  .sess-head{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:14px;}
+  .sess-head-compact{padding-bottom:8px;margin-bottom:8px;}
+  .sess-head-compact .action-icons{margin-top:4px;}
+  .sess-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .action-icons-inline{display:flex;gap:6px;flex-shrink:0;}
+  .action-icons-inline .icon-btn{padding:5px 8px;font-size:14px;}
+  .sess-head h2{
+    font-family:var(--font-display);font-weight:800;font-size:22px;text-transform:uppercase;
+    margin:0 0 4px;letter-spacing:.3px;
+  }
+  .sess-head-compact h2{font-size:18px;margin-bottom:2px;}
+  .sess-meta{color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:14px;}
+  .sess-meta b{color:var(--ink);}
+  .confirmed{color:var(--present);font-weight:700;}
+  .unconfirmed{color:var(--absent);font-weight:700;}
+  .match-time{font-size:13px;font-weight:800;color:var(--gold);font-family:var(--font-mono);}
+  .opp-contact{
+    margin-top:8px;font-size:13px;color:var(--ink);
+    background:var(--panel-2);border:1px solid var(--line);
+    padding:7px 10px;border-radius:6px;display:inline-block;
+  }
+  .opp-contact a{color:var(--gold);text-decoration:none;font-weight:700;}
+  .opp-contact a:hover{text-decoration:underline;}
+  .note{
+    margin-top:8px;font-size:12px;color:var(--gold);
+    background:rgba(240,180,41,0.08);border:1px solid rgba(240,180,41,0.25);
+    padding:6px 10px;border-radius:6px;display:inline-block;
+  }
+
+  .toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+  .view-toggle{display:flex;gap:6px;}
+  .view-toggle button{
+    background:transparent;border:1px solid var(--line);color:var(--muted);
+    padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;
+  }
+  .view-toggle button.active{background:var(--gold);color:#1a1305;border-color:var(--gold);}
+
+  /* scoreboard tally */
+  .tally{
+    display:flex;gap:14px;font-family:var(--font-mono);font-size:13px;
+  }
+  .tally .n{font-size:18px;font-weight:700;}
+  .tally .present .n{color:var(--present);}
+  .tally .dispo .n{color:var(--dispo);}
+  .tally .absent .n{color:var(--absent);}
+  .tally .unset .n{color:var(--muted);}
+
+  /* résumé garçons/filles présents ou disponibles */
+  .gendertally{
+    display:flex;gap:16px;flex-wrap:wrap;
+    font-size:12px;font-family:var(--font-mono);
+    margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);
+  }
+  .gendertally b{font-size:14px;}
+  .gt-m{color:var(--team1);}
+  .gt-f{color:var(--team2);}
+  .gt-total{color:var(--gold);}
+  .gender-tag{font-size:11px;font-weight:700;}
+  .gender-tag.gt-tag-m{color:var(--team1);}
+  .gender-tag.gt-tag-f{color:var(--team2);}
+
+  /* roster */
+  .roster{display:flex;flex-direction:column;gap:3px;}
+  .prow{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
+    padding:5px 10px;
+  }
+  .prow .pname{font-size:13px;font-weight:500;}
+  .statusbtns{display:flex;gap:5px;}
+  .sbtn{
+    width:30px;height:26px;border-radius:6px;border:1px solid var(--line);
+    background:transparent;color:var(--muted);font-size:12px;font-weight:700;
+    cursor:pointer;font-family:var(--font-mono);transition:all .12s;
+  }
+  .sbtn.on-p{background:var(--present);border-color:var(--present);color:#08221c;}
+  .sbtn.on-d{background:var(--dispo);border-color:var(--dispo);color:#241a04;}
+  .sbtn.on-a{background:var(--absent);border-color:var(--absent);color:#2b0a08;}
+
+  .bilan-link{
+    background:transparent;border:1px solid var(--line);color:var(--gold);
+    padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;
+  }
+  .empty-hint{color:var(--muted);font-size:13px;text-align:center;padding:60px 20px;}
+
+  /* bilan */
+  table.bilan{width:100%;border-collapse:collapse;font-size:13px;}
+  table.bilan th{
+    text-align:left;font-family:var(--font-mono);font-size:11px;
+    color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+    padding:8px 10px;border-bottom:1px solid var(--line);
+  }
+  table.bilan td{padding:9px 10px;border-bottom:1px solid var(--line);}
+  table.bilan tr:hover td{background:var(--panel-2);}
+  .bar-wrap{background:#26374a;border-radius:4px;height:8px;width:100%;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--present);}
+  .bilan-note{color:var(--muted);font-size:12px;margin-bottom:12px;}
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+
+  .footer-note{color:var(--muted);font-size:11px;text-align:center;margin-top:22px;}
+
+  /* ===== Bouton Paramètres compact (icône seule) ===== */
+  .gear-tab{
+    flex:0 0 40px;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    font-size:16px;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .gear-tab:hover{background:var(--panel-2);}
+  .gear-tab.active{border-color:var(--gold);background:var(--panel-2);}
+  .toggle-hint{color:var(--muted);font-size:10px;margin:0 0 8px 2px;}
+
+  /* ===== Formulaires (ajout/édition de match, ajout de joueur) ===== */
+  .form-row{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;}
+  .form-row label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-family:var(--font-mono);}
+  .form-row input, .form-row select{
+    background:var(--panel-2);border:1px solid var(--line);color:var(--ink);
+    padding:9px 10px;border-radius:6px;font-size:14px;font-family:var(--font-body);
+  }
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;}
+  @media (max-width:600px){.form-grid{grid-template-columns:1fr;}}
+  .form-check{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;}
+  .form-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .btn-primary{
+    background:var(--gold);color:#1a1305;border:none;padding:10px 16px;
+    border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;
+  }
+  .btn-secondary{
+    background:transparent;border:1px solid var(--line);color:var(--ink);
+    padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .btn-danger{
+    background:transparent;border:1px solid rgba(226,87,76,0.5);color:var(--absent);
+    padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .action-icons{display:flex;gap:6px;margin-left:auto;}
+  .icon-btn{
+    background:transparent;border:1px solid var(--line);color:var(--muted);
+    padding:5px 9px;border-radius:6px;font-size:13px;cursor:pointer;
+  }
+  .icon-btn:hover{color:var(--ink);border-color:var(--gold);}
+
+  /* ===== Page Paramètres : effectifs ===== */
+  .params-team{margin-bottom:22px;}
+  .params-team h3{
+    font-family:var(--font-display);font-weight:800;text-transform:uppercase;
+    font-size:16px;margin:0 0 10px;letter-spacing:.3px;
+  }
+  .params-team.p-team1 h3{color:var(--team1);}
+  .params-team.p-team2 h3{color:var(--team2);}
+  .manager-box{
+    display:flex;align-items:center;gap:10px;
+    background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+    padding:10px 12px;margin-bottom:14px;
+  }
+  .manager-info{display:flex;flex-direction:column;gap:2px;flex:1;}
+  .manager-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-family:var(--font-mono);}
+  .manager-name{font-size:14px;font-weight:600;}
+  .manager-email{font-size:12px;color:var(--gold);text-decoration:none;}
+  .manager-email:hover{text-decoration:underline;}
+  .manager-info input{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:6px 8px;border-radius:6px;font-size:13px;}
+  .plist{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+  .prow-param{
+    display:flex;align-items:center;gap:10px;
+    background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+    padding:8px 12px;
+  }
+  .prow-param .pname{flex:1;font-size:14px;}
+  .add-player-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .add-player-row input{flex:1;min-width:140px;}
+
+  /* ===== Vue "présences par joueur" ===== */
+  .player-select-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .player-select-row select{flex:1;min-width:180px;}
+  .player-sess-list{display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow-y:auto;}
+  .player-sess-row{
+    display:flex;align-items:center;gap:10px;
+    background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+    padding:8px 10px;
+  }
+  .player-sess-row .psr-date{font-family:var(--font-mono);font-size:12px;color:var(--muted);width:70px;flex-shrink:0;}
+  .player-sess-row .psr-info{flex:1;min-width:0;}
+  .player-sess-row .psr-lbl{font-size:13px;font-weight:600;}
+  .player-sess-row .psr-sub{font-size:11px;color:var(--muted);}
+  .player-month-label{
+    font-family:var(--font-mono);font-size:12px;font-weight:800;color:var(--gold);
+    text-transform:uppercase;letter-spacing:1px;margin:10px 0 4px;
+  }
+</style>
+</head>
+<body class="light-theme">
+<div class="wrap">
+
+  <header>
+    <div>
+      <div class="club">ASVB <span>Bieville</span>-Beuville</div>
+      <div class="subtitle">Feuille de présences — Entraînements &amp; Matchs</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="season-tag">SAISON 2026 / 2027</div>
+      <button id="theme-toggle" class="theme-toggle-btn" title="Essayer le mode clair">🌙</button>
+    </div>
+  </header>
+
+  <div class="teamtabs">
+    <div class="teamtab active" data-team="team1" id="tab-team1">
+      <div class="t-name">Équipe 1</div>
+      <div class="t-div">DSUP · lundi 20h30</div>
+    </div>
+    <div class="teamtab active" data-team="team2" id="tab-team2">
+      <div class="t-name">Équipe 2</div>
+      <div class="t-div">D3A · lundi 20h30</div>
+    </div>
+    <div class="gear-tab" data-team="params" id="tab-params" title="Paramètres">⚙️</div>
+  </div>
+  <div class="toggle-hint">Touchez Équipe 1 et/ou Équipe 2 pour les afficher séparément ou ensemble.</div>
+
+  <div class="toolbar" id="toolbar"></div>
+  <div class="panel" id="formPanel" style="display:none;"></div>
+  <div class="panel" id="bilanPanel" style="display:none;"></div>
+  <div class="panel" id="playerPanel" style="display:none;"></div>
+  <div class="timeline" id="timeline"></div>
+
+  <div class="footer-note">Les données de présence sont partagées entre tous les utilisateurs de cet outil (staff du club). Domicile = Gymnase Bieville-Beuville.</div>
+</div>
+
+<script>
+/* ===== Couche de stockage universelle =====
+   Sur Claude.ai, window.storage existe nativement (stockage des artefacts).
+   Sur un hébergement statique (Netlify, etc.), window.storage n'existe pas : on bascule
+   alors automatiquement sur une fonction serverless Netlify qui utilise Netlify Blobs
+   comme base de données. Le reste du code applicatif appelle toujours backendGet/
+   backendSet/backendList et n'a pas besoin de savoir où il tourne. */
+const IS_NATIVE_STORAGE = !!(window.storage && typeof window.storage.get === "function");
+const NETLIFY_FN_URL = "/.netlify/functions/storage";
+
+async function backendGet(key, shared){
+  if(IS_NATIVE_STORAGE) return window.storage.get(key, shared);
+  const res = await fetch(`${NETLIFY_FN_URL}?action=get&key=${encodeURIComponent(key)}`);
+  if(!res.ok) throw new Error("Storage get failed: HTTP "+res.status);
+  const data = await res.json();
+  if(data.value===null || data.value===undefined) return null;
+  return {key, value: data.value, shared};
+}
+async function backendSet(key, value, shared){
+  if(IS_NATIVE_STORAGE) return window.storage.set(key, value, shared);
+  const res = await fetch(NETLIFY_FN_URL, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({key, value})
+  });
+  if(!res.ok) throw new Error("Storage set failed: HTTP "+res.status);
+  return {key, value, shared};
+}
+async function backendList(prefix, shared){
+  if(IS_NATIVE_STORAGE) return window.storage.list(prefix, shared);
+  const res = await fetch(`${NETLIFY_FN_URL}?action=list&prefix=${encodeURIComponent(prefix||"")}`);
+  if(!res.ok) throw new Error("Storage list failed: HTTP "+res.status);
+  const data = await res.json();
+  return {keys: data.keys||[], prefix, shared};
+}
+
+function PL(name, gender){ return {name, gender}; } // gender: "M" ou "F"
+
+const DEFAULT_ROSTERS = {
+  team1: [
+    PL("Elise Nguyen","F"), PL("Christelle Bataille","F"), PL("Aniko Kiss","F"), PL("Stéphanie Jouan","F"),
+    PL("Marc Bouquiaux","M"), PL("François Condominas","M"), PL("Guillaume Hannebique","M"), PL("Anthony Marie","M"),
+    PL("Luan Nguyen","M"), PL("Ludovic Theault","M"), PL("Marin Salmi","M")
+  ],
+  team2: [
+    PL("Luce Barbançon","F"), PL("Cécile Esbri","F"), PL("Anne Hannebique","F"), PL("Karine Theault","F"),
+    PL("Adrien Chenneviere","M"), PL("Yvan Salomez","M"), PL("Ronan Danno","M"), PL("Mickael Lamarque","M"),
+    PL("Baptiste Schiel","M"), PL("Philippe Suchet","M"), PL("Arthur Ruaudel","M"), PL("Lucien Fort","M")
+  ]
+};
+
+/* ROSTERS est modifiable en mémoire : personnalisations (ajout/suppr/renommage de
+   joueur·ses) chargées depuis le stockage au démarrage, sinon copie des valeurs par défaut. */
+let ROSTERS = {team1: DEFAULT_ROSTERS.team1.map(p=>({...p})), team2: DEFAULT_ROSTERS.team2.map(p=>({...p}))};
+
+/* Empêche un appel de stockage lent/bloqué de geler indéfiniment le démarrage de l'appli :
+   au-delà du délai, on abandonne cet appel précis et on garde la valeur par défaut. */
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise(resolve=> setTimeout(()=> resolve(undefined), ms))
+  ]);
+}
+
+/* Thème clair (essai) : préférence personnelle (non partagée), mémorisée par appareil. */
+let lightTheme = true;
+
+function applyTheme(){
+  document.body.classList.toggle("light-theme", lightTheme);
+  const btn = document.getElementById("theme-toggle");
+  if(btn){
+    btn.textContent = lightTheme ? "☀️" : "🌙";
+    btn.title = lightTheme ? "Repasser en mode sombre" : "Essayer le mode clair";
+  }
+}
+async function loadThemePref(){
+  try{
+    const res = await withTimeout(backendGet("theme_pref", false), 3000);
+    if(res) lightTheme = (res.value === "light");
+  }catch(e){ /* on garde le mode sombre par défaut */ }
+}
+function persistThemePref(){
+  backendSet("theme_pref", lightTheme ? "light" : "dark", false).catch(e=>logSilently("theme_pref", e));
+}
+document.getElementById("theme-toggle").addEventListener("click", ()=>{
+  lightTheme = !lightTheme;
+  applyTheme();
+  persistThemePref();
+});
+
+async function loadRosters(){
+  for(const team of ["team1","team2"]){
+    try{
+      const res = await withTimeout(backendGet("roster:"+team, true), 4000);
+      if(res) ROSTERS[team] = JSON.parse(res.value);
+    }catch(e){ /* on garde la valeur par défaut déjà en mémoire */ }
+  }
+}
+function persistRoster(team){
+  backendSet("roster:"+team, JSON.stringify(ROSTERS[team]), true).catch(e=>logSilently("roster", e));
+}
+
+/* Responsable de chaque équipe (nom + e-mail), modifiable depuis la page Paramètres */
+const DEFAULT_MANAGERS = {
+  team1: {name:"Ludovic Theault", email:"Ludovic.theault@gmail.com"},
+  team2: {name:"Karine Theault", email:"karine.theault@gmail.com"}
+};
+let MANAGERS = {team1:{...DEFAULT_MANAGERS.team1}, team2:{...DEFAULT_MANAGERS.team2}};
+
+async function loadManagers(){
+  for(const team of ["team1","team2"]){
+    try{
+      const res = await withTimeout(backendGet("manager:"+team, true), 4000);
+      if(res) MANAGERS[team] = JSON.parse(res.value);
+    }catch(e){ /* on garde la valeur par défaut déjà en mémoire */ }
+  }
+}
+function persistManager(team){
+  backendSet("manager:"+team, JSON.stringify(MANAGERS[team]), true).catch(e=>logSilently("manager", e));
+}
+
+const TEAM_LABEL = {team1:"Équipe 1 · DSUP", team2:"Équipe 2 · D3A", both:"Équipe 1 & Équipe 2"};
+
+// Weeks with a probable school-holiday break (informational only, still defaults to training)
+const HOLIDAY_HINT = {
+  "2026-10-19":"Vacances de la Toussaint (à confirmer)",
+  "2026-10-26":"Vacances de la Toussaint (à confirmer)",
+  "2026-12-21":"Vacances de Noël (à confirmer)",
+  "2026-12-28":"Vacances de Noël (à confirmer)",
+  "2027-02-15":"Vacances d'hiver (à confirmer)",
+  "2027-02-22":"Vacances d'hiver (à confirmer)",
+  "2027-04-05":"Vacances de printemps (à confirmer)",
+  "2027-04-12":"Vacances de printemps (à confirmer)",
+  "2027-04-19":"Vacances de printemps (à confirmer)"
+};
+
+const MONTHS_FR = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+
+function fmtDate(iso){
+  const d = new Date(iso+"T00:00:00");
+  return {day: d.getDate(), month: d.getMonth(), monthLabel: MONTHS_FR[d.getMonth()], year: d.getFullYear(), weekday:d.getDay()};
+}
+const DAYNAME = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
+
+/*
+  Modèle de données : une liste chronologique de séances par équipe.
+  Chaque séance a une date réelle (pas forcément un lundi) car pour les
+  matchs à l'extérieur, le jour de match est celui du club qui REÇOIT
+  (vérifié dans le Répertoire UFOLEP). Quand ce jour n'est pas le lundi,
+  l'entraînement du lundi est CONSERVÉ et le match s'ajoute en séance
+  séparée. "replaces" = true veut dire que la séance remplace
+  l'entraînement du lundi (match à domicile, ou match extérieur qui tombe
+  un lundi).
+*/
+const GYM_COLLEVILLE = "Gymnase Bieville-Beuville";
+
+/* Contacts des équipes adverses (capitaine/responsable + téléphone), d'après le
+   Répertoire UFOLEP Volley-Ball Calvados 2025/2026 (saison précédente — à vérifier/actualiser
+   une fois le nouveau répertoire 2026/2027 disponible). Clé = nom de l'adversaire tel
+   qu'il apparaît dans le calendrier (s.opponent). */
+const OPPONENT_CONTACTS = {
+  "Fleury/Orne 1": {name:"CHERRUAULT David", phone:"06 15 11 80 91"},
+  "Forum Mouen": {name:"QUINTAINE Franck", phone:"06 79 99 44 58"},
+  "Ifs 1": {name:"FORTIN Bertrand", phone:"06 67 45 34 86"},
+  "Fontaine Etoupefour 1": {name:"CLAEYS Marine", phone:"06 95 17 67 88"},
+  "Colleville Montgomery": {name:"TARJUS Emélie", phone:"06 19 80 16 59"},
+  "Carpiquet 2": {name:"FOREAU Bastien", phone:"06 20 16 79 41"},
+  "Carpiquet 1": {name:"GOSSELIN Guillaume", phone:"06 13 19 79 97"},
+  "Caen Sport Demi Lune": {name:"LEFRANCOIS Olivier", phone:"07 83 06 92 07"},
+  "Pont l'Évêque 2": {name:"KIRTSCH Jean", phone:"06 70 19 05 75"},
+  "Ouistreham 4": {name:"EVRAT Benoit", phone:"06 24 87 55 49"},
+  "Saint Pierre en Auge 2": {name:"ANTOLEIN Karine", phone:"06 62 36 70 76"},
+  "Falaise 4": {name:"LEFOYER-TRAVERS Anne", phone:"06 75 00 37 88"},
+  "Saint Pierre en Auge 1": {name:"AUBEY Yohanne", phone:"06 82 08 17 23"},
+  "Fontaine Etoupefour 3": {name:"DELAHAYE Olivier", phone:"06 65 62 19 65"},
+  "Caen Ganil 2": {name:"VOLTOLINI Georges", phone:"06 30 14 38 41"}
+};
+
+function S(date, type, extra){ return Object.assign({date, type}, extra||{}); }
+
+const BASE_SESSIONS = {
+team1: [ // DSUP — calendrier 2026/2027 : seuls les entraînements sont connus pour l'instant,
+         // les matchs seront ajoutés au fur et à mesure via "Ajouter un match" dès publication du calendrier UFOLEP.
+         // Reprise des entraînements le 7 septembre 2026.
+  S("2026-09-07","entrainement",{}),
+  S("2026-09-14","entrainement",{}),
+  S("2026-09-21","entrainement",{}),
+  S("2026-09-28","entrainement",{}),
+  S("2026-10-05","entrainement",{}),
+  S("2026-10-12","entrainement",{}),
+  S("2026-10-19","entrainement",{note:HOLIDAY_HINT["2026-10-19"]}),
+  S("2026-10-26","entrainement",{note:HOLIDAY_HINT["2026-10-26"]}),
+  S("2026-11-02","entrainement",{}),
+  S("2026-11-09","entrainement",{}),
+  S("2026-11-16","entrainement",{}),
+  S("2026-11-23","entrainement",{}),
+  S("2026-11-30","entrainement",{}),
+  S("2026-12-07","entrainement",{}),
+  S("2026-12-14","entrainement",{}),
+  S("2026-12-21","entrainement",{note:HOLIDAY_HINT["2026-12-21"]}),
+  S("2026-12-28","entrainement",{note:HOLIDAY_HINT["2026-12-28"]}),
+  S("2027-01-04","entrainement",{}),
+  S("2027-01-11","entrainement",{}),
+  S("2027-01-18","entrainement",{}),
+  S("2027-01-25","entrainement",{}),
+  S("2027-02-01","entrainement",{}),
+  S("2027-02-08","entrainement",{}),
+  S("2027-02-15","entrainement",{note:HOLIDAY_HINT["2027-02-15"]}),
+  S("2027-02-22","entrainement",{note:HOLIDAY_HINT["2027-02-22"]}),
+  S("2027-03-01","entrainement",{}),
+  S("2027-03-08","entrainement",{}),
+  S("2027-03-15","entrainement",{}),
+  S("2027-03-22","entrainement",{}),
+  S("2027-03-29","entrainement",{}),
+  S("2027-04-05","entrainement",{note:HOLIDAY_HINT["2027-04-05"]}),
+  S("2027-04-12","entrainement",{note:HOLIDAY_HINT["2027-04-12"]}),
+  S("2027-04-19","entrainement",{note:HOLIDAY_HINT["2027-04-19"]}),
+  S("2027-04-26","entrainement",{}),
+  S("2027-05-03","entrainement",{}),
+  S("2027-05-10","entrainement",{}),
+  S("2027-05-17","entrainement",{}),
+  S("2027-05-24","entrainement",{}),
+  S("2027-05-31","entrainement",{}),
+  S("2027-06-07","entrainement",{}),
+  S("2027-06-14","entrainement",{})
+],
+team2: [ // D3A — idem, uniquement les entraînements pour l'instant
+  S("2026-09-07","entrainement",{}),
+  S("2026-09-14","entrainement",{}),
+  S("2026-09-21","entrainement",{}),
+  S("2026-09-28","entrainement",{}),
+  S("2026-10-05","entrainement",{}),
+  S("2026-10-12","entrainement",{}),
+  S("2026-10-19","entrainement",{note:HOLIDAY_HINT["2026-10-19"]}),
+  S("2026-10-26","entrainement",{note:HOLIDAY_HINT["2026-10-26"]}),
+  S("2026-11-02","entrainement",{}),
+  S("2026-11-09","entrainement",{}),
+  S("2026-11-16","entrainement",{}),
+  S("2026-11-23","entrainement",{}),
+  S("2026-11-30","entrainement",{}),
+  S("2026-12-07","entrainement",{}),
+  S("2026-12-14","entrainement",{}),
+  S("2026-12-21","entrainement",{note:HOLIDAY_HINT["2026-12-21"]}),
+  S("2026-12-28","entrainement",{note:HOLIDAY_HINT["2026-12-28"]}),
+  S("2027-01-04","entrainement",{}),
+  S("2027-01-11","entrainement",{}),
+  S("2027-01-18","entrainement",{}),
+  S("2027-01-25","entrainement",{}),
+  S("2027-02-01","entrainement",{}),
+  S("2027-02-08","entrainement",{}),
+  S("2027-02-15","entrainement",{note:HOLIDAY_HINT["2027-02-15"]}),
+  S("2027-02-22","entrainement",{note:HOLIDAY_HINT["2027-02-22"]}),
+  S("2027-03-01","entrainement",{}),
+  S("2027-03-08","entrainement",{}),
+  S("2027-03-15","entrainement",{}),
+  S("2027-03-22","entrainement",{}),
+  S("2027-03-29","entrainement",{}),
+  S("2027-04-05","entrainement",{note:HOLIDAY_HINT["2027-04-05"]}),
+  S("2027-04-12","entrainement",{note:HOLIDAY_HINT["2027-04-12"]}),
+  S("2027-04-19","entrainement",{note:HOLIDAY_HINT["2027-04-19"]}),
+  S("2027-04-26","entrainement",{}),
+  S("2027-05-03","entrainement",{}),
+  S("2027-05-10","entrainement",{}),
+  S("2027-05-17","entrainement",{}),
+  S("2027-05-24","entrainement",{}),
+  S("2027-05-31","entrainement",{}),
+  S("2027-06-07","entrainement",{}),
+  S("2027-06-14","entrainement",{})
+]
+};
+
+/* ===== Surcharges persistantes : matchs ajoutés / modifiés / supprimés par le staff =====
+   sessionOverrides[team][date] = objet séance (ajout/modif) OU "__DELETED__" (suppression
+   d'une séance du calendrier de base). Fusionné avec BASE_SESSIONS à l'affichage via
+   effectiveSessions(). Persisté dans le stockage partagé sous "sessions_override:<team>". */
+let sessionOverrides = {team1:{}, team2:{}};
+
+async function loadSessionOverrides(){
+  for(const team of ["team1","team2"]){
+    try{
+      const res = await withTimeout(backendGet("sessions_override:"+team, true), 4000);
+      if(res) sessionOverrides[team] = JSON.parse(res.value);
+    }catch(e){ /* on garde {} déjà en mémoire (aucune personnalisation) */ }
+  }
+}
+function persistSessionOverrides(team){
+  backendSet("sessions_override:"+team, JSON.stringify(sessionOverrides[team]), true).catch(e=>logSilently("sessions_override", e));
+}
+
+function effectiveSessions(team){
+  const map = {};
+  BASE_SESSIONS[team].forEach(s=> map[s.date] = s);
+  const ov = sessionOverrides[team] || {};
+  Object.keys(ov).forEach(date=>{
+    if(ov[date]==="__DELETED__") delete map[date];
+    else map[date] = ov[date];
+  });
+  return Object.values(map).sort((a,b)=> a.date<b.date ? -1 : (a.date>b.date ? 1 : 0));
+}
+
+/* Enregistre un ajout/modif de séance. oldDate est fourni lors d'une édition qui déplace
+   la date : on masque/efface l'ancienne entrée avant d'écrire la nouvelle. */
+function saveSessionOverride(team, newSession, oldDate){
+  const ov = sessionOverrides[team];
+  if(oldDate && oldDate !== newSession.date){
+    const wasBase = BASE_SESSIONS[team].some(s=>s.date===oldDate);
+    if(wasBase) ov[oldDate] = "__DELETED__";
+    else delete ov[oldDate];
+  }
+  ov[newSession.date] = newSession;
+  persistSessionOverrides(team);
+}
+
+function deleteSessionEntry(team, date){
+  const ov = sessionOverrides[team];
+  const wasBase = BASE_SESSIONS[team].some(s=>s.date===date);
+  if(wasBase) ov[date] = "__DELETED__"; else delete ov[date];
+  persistSessionOverrides(team);
+}
+
+function sessionLabel(s){
+  if(s.type==="match"){
+    const conf = s.confirmed===true ? "" : " ⚠";
+    if(s.home===true) return {lbl:"Match — "+s.opponent+conf, badge:"DOM", badgeClass:"dom"};
+    if(s.home===false) return {lbl:"Match — "+s.opponent+conf, badge: s.replaces?"EXT (lun.)":"EXT", badgeClass:"ext"};
+    return {lbl:"Match — "+s.opponent+conf, badge:"?", badgeClass:"ext"};
+  }
+  if(s.type==="coupe") return {lbl:s.label, badge:"COUPE", badgeClass:"coupe"};
+  if(s.type==="bye") return {lbl:"Exempt (pas de match)", badge:"REPOS", badgeClass:"bye"};
+  return {lbl:"Entraînement", badge:"ENTR.", badgeClass:"entr"};
+}
+
+/* Heure à afficher à côté du jour dans la liste (vide si inconnue, ex. Coupe avant tirage) */
+function timeForSession(s){
+  if(s.type==="match") return s.time || "";
+  if(s.type==="entrainement" || s.type==="bye") return "20h30";
+  return "";
+}
+
+let currentTeam = "team1";
+let expandedKey = null; // "team:date" de la ligne actuellement dépliée (accordéon, une seule à la fois)
+let bilanOpenTeam = null; // team dont le bilan est affiché dans #bilanPanel, ou null
+
+async function toggleRow(rowEl, team, iso){
+  const key = team+":"+iso;
+  const existingDetail = rowEl.nextElementSibling && rowEl.nextElementSibling.classList.contains("detail") ? rowEl.nextElementSibling : null;
+
+  // Ferme toute autre ligne ouverte (accordéon : une seule à la fois)
+  document.querySelectorAll(".detail").forEach(d=>d.remove());
+  document.querySelectorAll(".sess.selected").forEach(r=>r.classList.remove("selected"));
+
+  if(existingDetail && expandedKey===key){
+    expandedKey = null; // on vient de la fermer
+    return;
+  }
+
+  expandedKey = key;
+  rowEl.classList.add("selected");
+  const detail = document.createElement("div");
+  detail.className = "detail";
+  rowEl.insertAdjacentElement("afterend", detail);
+  await renderSessionDetail(detail, team, iso);
+}
+
+function renderTimeline(){
+  renderGeneration++;
+  const myGen = renderGeneration;
+  const el = document.getElementById("timeline");
+  el.innerHTML = "";
+  let lastMonth = null;
+  const sessions = effectiveSessions(currentTeam);
+  const countTargets = [];
+  sessions.forEach(s=>{
+    const iso = s.date;
+    const f = fmtDate(iso);
+    const key = f.year+"-"+f.month;
+    if(key!==lastMonth){
+      lastMonth = key;
+      const ml = document.createElement("div");
+      ml.className="month-label";
+      ml.textContent = f.monthLabel+" "+f.year;
+      el.appendChild(ml);
+    }
+    const {lbl, badge, badgeClass} = sessionLabel(s);
+    const isCommon = isTrainingType(s.type) && isCommonTrainingDate(iso);
+    const rowKey = currentTeam+":"+iso;
+    const row = document.createElement("div");
+    row.className = "sess"+(expandedKey===rowKey?" selected":"");
+    row.dataset.date = iso;
+    row.innerHTML = `
+      <div class="sess-top">
+        <div class="d">${String(f.day).padStart(2,"0")}</div>
+        <div class="lbl">${lbl}${isCommon ? ' <span class="common-tag" title="Entraînement commun aux 2 équipes">👥</span>' : ""}</div>
+        <div class="badge ${badgeClass}">${badge}</div>
+      </div>
+      <div class="sess-bottom">
+        <div class="sub">${DAYNAME[f.weekday]}${timeForSession(s) ? " · <span class=\"row-time\">"+timeForSession(s)+"</span>" : ""}${isCommon ? " · Commun aux 2 équipes" : ""}${s.note && badgeClass==="entr" ? " · "+s.note : ""}</div>
+        <div class="rowcount" id="rc-${currentTeam}-${iso}"></div>
+      </div>
+    `;
+    row.addEventListener("click", ()=> toggleRow(row, currentTeam, iso));
+    el.appendChild(row);
+    countTargets.push({team:currentTeam, iso});
+    if(expandedKey===rowKey){
+      const detail = document.createElement("div");
+      detail.className = "detail";
+      el.appendChild(detail);
+      renderSessionDetail(detail, currentTeam, iso);
+    }
+  });
+  populateCachedRowCounts(countTargets);
+}
+
+/* Charge les présences d'une séance et affiche un compteur compact P/D/A dans la ligne de la liste, sans déplier */
+/* Remplit les compteurs de la liste UNIQUEMENT à partir des données déjà en cache
+   (aucun nouvel appel réseau). Avant, la liste entière était préchargée en arrière-plan
+   à chaque affichage : c'était la principale source de trafic superflu vers le stockage
+   partagé et la cause probable des erreurs "rate limit" ressenties par les utilisateurs.
+   Désormais, un compteur n'apparaît qu'une fois la séance déjà consultée (déplié une
+   fois, ou vue depuis "Par joueur"/bilan) — aucune charge ajoutée en arrière-plan. */
+function populateCachedRowCounts(countTargets){
+  countTargets.forEach(({team, iso})=>{
+    if(attendanceCache[storageKey(team, iso)]) updateRowCount(team, iso);
+  });
+}
+
+async function updateRowCount(team, iso){
+  const el = document.getElementById(`rc-${team}-${iso}`);
+  if(!el) return;
+  const data = await loadAttendance(team, iso);
+  const el2 = document.getElementById(`rc-${team}-${iso}`); // re-vérifie que la ligne existe toujours après l'attente
+  if(!el2) return;
+  if(Object.keys(data).length===0){ el2.innerHTML = ""; return; }
+  const s = findSession(team, iso);
+  const sessionType = s ? s.type : "match";
+  const {mAvail,mTotal,fAvail,fTotal} = genderAvailability(data, effectiveRoster(team, iso));
+  const ok = isSquadSufficient(mAvail, fAvail, sessionType);
+  if(sessionType==="entrainement" || sessionType==="bye"){
+    const avail = mAvail+fAvail, total = mTotal+fTotal;
+    el2.innerHTML = `<span class="rc-total">${avail}/${total}</span><span class="suff-badge ${ok?'ok':'warn'}">${ok?'✓':'!'}</span>`;
+  } else {
+    el2.innerHTML = `<span class="rc-f">${fAvail}/${fTotal}</span><span class="rc-m">${mAvail}/${mTotal}</span><span class="suff-badge ${ok?'ok':'warn'}">${ok?'✓':'!'}</span>`;
+  }
+}
+
+function findSession(team, iso){
+  if(team==="both") return effectiveSessions("team1").find(s=>s.date===iso) || effectiveSessions("team2").find(s=>s.date===iso) || null;
+  return effectiveSessions(team).find(s=>s.date===iso) || null;
+}
+
+/* ===== Entraînements communs aux 2 équipes =====
+   Règle : quand aucune des 2 équipes n'a de match (ou coupe) ce jour-là — donc que
+   les deux ont simplement "Entraînement" ou une semaine "exempte" — c'est en réalité
+   la même séance physique (même créneau, même salle). On la traite alors comme UNE
+   seule séance partagée : effectif combiné des 2 équipes, feuille de présence commune. */
+function isTrainingType(type){ return type==="entrainement" || type==="bye"; }
+
+function isCommonTrainingDate(iso){
+  const s1 = findSession("team1", iso);
+  const s2 = findSession("team2", iso);
+  return !!(s1 && s2 && isTrainingType(s1.type) && isTrainingType(s2.type));
+}
+
+function commonRoster(){ return [...ROSTERS.team1, ...ROSTERS.team2]; }
+
+/* Effectif à utiliser pour une séance donnée : combiné si entraînement commun, sinon celui de l'équipe */
+function effectiveRoster(team, iso){
+  if(team==="both") return commonRoster();
+  if(isCommonTrainingDate(iso)) return commonRoster();
+  return ROSTERS[team];
+}
+
+function storageKey(team, iso){
+  if(team==="both" || isCommonTrainingDate(iso)) return "attendance:commun:"+iso;
+  return "attendance:"+team+":"+iso;
+}
+
+/* Cache mémoire pour éviter de refaire les mêmes lectures de stockage à chaque
+   changement d'onglet (source principale du "rate limit" atteint auparavant). */
+const attendanceCache = {};
+
+/* Réessaie un appel de stockage plusieurs fois avec un délai croissant, pour absorber
+   les erreurs passagères de type "rate limit exceeded" sans que l'utilisateur les voie. */
+/* Journal d'erreurs silencieux : certains environnements (navigateur intégré à
+   certaines apps mobiles) affichent automatiquement à l'écran tout ce qui passe par
+   console.error, ce qui montrait des messages techniques inutiles à l'utilisateur
+   pour des erreurs déjà gérées normalement (retry, repli, message discret dans
+   l'interface). On garde une trace consultable (window.__presenceErrorLog) sans
+   jamais appeler console.error. */
+window.__presenceErrorLog = [];
+function logSilently(context, err){
+  window.__presenceErrorLog.push({context, message: err && err.message ? err.message : String(err), at: new Date().toISOString()});
+  if(window.__presenceErrorLog.length > 50) window.__presenceErrorLog.shift();
+}
+
+async function withRetry(fn, retries, baseDelay){
+  let lastErr;
+  for(let i=0;i<=retries;i++){
+    try{ return await fn(); }
+    catch(e){
+      lastErr = e;
+      if(i<retries) await new Promise(r=>setTimeout(r, baseDelay*Math.pow(2,i)));
+    }
+  }
+  throw lastErr;
+}
+
+/* Affiche un petit message d'erreur discret juste sous la ligne concernée, sans bloquer
+   l'interface (contrairement à alert(), qui interrompait l'utilisateur parfois plusieurs
+   secondes après son action, de façon déroutante). Disparaît tout seul. */
+function showSaveError(rowEl){
+  let msg = rowEl.nextElementSibling;
+  if(!msg || !msg.classList.contains("save-error-msg")){
+    msg = document.createElement("div");
+    msg.className = "save-error-msg";
+    rowEl.insertAdjacentElement("afterend", msg);
+  }
+  msg.textContent = "❌ Non enregistré — réessayez";
+  clearTimeout(msg._hideTimer);
+  msg._hideTimer = setTimeout(()=>{ msg.remove(); }, 4000);
+}
+
+async function loadAttendance(team, iso){
+  const key = storageKey(team, iso);
+  if(attendanceCache[key]) return attendanceCache[key];
+  try{
+    const res = await withRetry(()=>backendGet(key, true), 2, 250);
+    const data = res ? JSON.parse(res.value) : {};
+    attendanceCache[key] = data;
+    return data;
+  }catch(e){ logSilently("loadAttendance", e); return {}; }
+}
+/* Retourne true si la sauvegarde a bien abouti, false sinon (permet à l'appelant
+   d'annuler visuellement le changement plutôt que d'afficher un état non sauvegardé). */
+async function saveAttendance(team, iso, data){
+  const key = storageKey(team, iso);
+  attendanceCache[key] = data;
+  try{
+    await withRetry(()=>backendSet(key, JSON.stringify(data), true), 2, 300);
+    return true;
+  }catch(e){
+    logSilently("saveAttendance", e);
+    return false;
+  }
+}
+
+/* File d'attente à concurrence limitée : évite d'envoyer des dizaines
+   d'appels de stockage simultanés (ce qui déclenche le rate limit) en
+   ne traitant que quelques lignes à la fois, avec une petite pause.
+   "gen" (optionnel) permet d'abandonner le travail si l'onglet a changé pendant
+   le chargement ; si non fourni (ex. import/export), le lot va toujours au bout. */
+let renderGeneration = 0;
+async function runWithLimit(items, worker, limit, delayMs, gen){
+  const checkGen = gen!==undefined;
+  for(let i=0; i<items.length; i+=limit){
+    if(checkGen && gen!==renderGeneration) return; // l'utilisateur a changé d'onglet : on arrête ce lot obsolète
+    const chunk = items.slice(i, i+limit);
+    await Promise.all(chunk.map(worker));
+    if(i+limit < items.length){
+      await new Promise(r=>setTimeout(r, delayMs));
+      if(checkGen && gen!==renderGeneration) return;
+    }
+  }
+}
+
+/* Disponibilité (Présent+Dispo) par genre pour une séance donnée */
+function genderAvailability(data, roster){
+  let mAvail=0,mTotal=0,fAvail=0,fTotal=0;
+  roster.forEach(player=>{
+    const s = data[player.name];
+    const available = (s==="P"||s==="D");
+    if(player.gender==="M"){ mTotal++; if(available) mAvail++; }
+    else { fTotal++; if(available) fAvail++; }
+  });
+  return {mAvail,mTotal,fAvail,fTotal};
+}
+
+/* Effectif jugé suffisant pour un match : au moins 2 filles ET 6 joueur·ses au total (dispo ou présent·e) */
+function isSquadSufficient(mAvail, fAvail){
+  return fAvail>=2 && (mAvail+fAvail)>=6;
+}
+
+/* Effectif suffisant :
+   - Match / Coupe : au moins 2 filles ET 6 joueur·ses au total (dispo ou présent·e)
+   - Entraînement / semaine exempte : 6 joueur·ses au total suffit, pas de règle de genre */
+function isSquadSufficient(mAvail, fAvail, sessionType){
+  const total = mAvail+fAvail;
+  if(sessionType==="entrainement" || sessionType==="bye") return total>=6;
+  return fAvail>=2 && total>=6;
+}
+
+function tallyHTML(data, roster, sessionType){
+  let p=0,d=0,a=0,u=0;
+  roster.forEach(player=>{
+    const s = data[player.name];
+    if(s==="P") p++; else if(s==="D") d++; else if(s==="A") a++; else u++;
+  });
+  const {mAvail,mTotal,fAvail,fTotal} = genderAvailability(data, roster);
+  const ok = isSquadSufficient(mAvail, fAvail, sessionType);
+  const isTraining = (sessionType==="entrainement" || sessionType==="bye");
+  const genderLine = isTraining
+    ? `<span class="gt-total">Disponibles : <b>${mAvail+fAvail}</b>/${mTotal+fTotal}</span>`
+    : `<span class="gt-f">♀ Filles présentes/dispos : <b>${fAvail}</b>/${fTotal}</span>
+       <span class="gt-m">♂ Garçons présents/dispos : <b>${mAvail}</b>/${mTotal}</span>`;
+  return `
+    <div class="tally">
+      <div class="present">PRÉS. <span class="n">${p}</span></div>
+      <div class="dispo">DISPO <span class="n">${d}</span></div>
+      <div class="absent">ABS. <span class="n">${a}</span></div>
+      <div class="unset">— <span class="n">${u}</span></div>
+    </div>
+    <div class="gendertally">
+      ${genderLine}
+      <span class="suff-badge ${ok?'ok':'warn'}">${ok?'✓ Effectif suffisant':'⚠ Effectif insuffisant'}</span>
+    </div>
+  `;
+}
+
+function sessionHeadHTML(team, s, actionIconsHTML){
+  const f = fmtDate(s.date);
+  const dayName = DAYNAME[f.weekday];
+  let title, metaHTML, noteHTML = "";
+  if(s.type==="match"){
+    const where = s.home===true ? s.place : (s.home===false ? s.place : (s.place||"Lieu à confirmer"));
+    title = "Match vs "+s.opponent;
+    const confirmBadge = s.confirmed===true
+      ? `<span class="confirmed">✓ Confirmé</span>`
+      : `<span class="unconfirmed">⚠ Non confirmé</span>`;
+    metaHTML = `<span><b>${dayName} ${f.day} ${f.monthLabel} ${f.year}</b></span><span class="match-time">${s.time||""}</span><span>${s.home===true?"Domicile":(s.home===false?"Extérieur":"Domicile/Extérieur à confirmer")}</span><span>${where}</span><span>${confirmBadge}</span>`;
+    if(s.note) noteHTML = `<div class="note">${s.note}</div>`;
+    const contact = OPPONENT_CONTACTS[s.opponent];
+    if(contact){
+      const telHref = "tel:"+contact.phone.replace(/\s/g,"");
+      noteHTML += `<div class="opp-contact">📞 <b>${contact.name}</b> — <a href="${telHref}">${contact.phone}</a></div>`;
+    }
+  } else if(s.type==="coupe"){
+    title = s.label;
+    metaHTML = `<span><b>${dayName} ${f.day} ${f.monthLabel} ${f.year}</b></span><span>Horaire/adversaire selon tirage</span>`;
+    noteHTML = `<div class="note">Coupe du Calvados : n'a lieu que si l'équipe est encore qualifiée. Vérifier le tirage avant l'entraînement.</div>`;
+  } else if(s.type==="bye"){
+    title = "Semaine sans match (exempt)";
+    metaHTML = `<span><b>${dayName} ${f.day} ${f.monthLabel} ${f.year}</b></span><span>Entraînement normal 20h30–22h30</span>`;
+  } else {
+    title = "Entraînement";
+    metaHTML = `<span><b>${dayName} ${f.day} ${f.monthLabel} ${f.year}</b></span><span>20h30–22h30</span><span>${GYM_COLLEVILLE}</span>`;
+    if(s.note) noteHTML = `<div class="note">${s.note}</div>`;
+  }
+  const isCommonTraining = isTrainingType(s.type) && isCommonTrainingDate(s.date);
+  const labelText = isCommonTraining ? "Équipe 1 & Équipe 2 · Entraînement commun" : TEAM_LABEL[team];
+  const titleRow = `<div class="sess-title-row"><h2>${title}</h2>${actionIconsHTML ? `<div class="action-icons-inline">${actionIconsHTML}</div>` : ""}</div>`;
+  return `<div style="font-family:var(--font-mono);font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">${labelText}</div>${titleRow}<div class="sess-meta">${metaHTML}</div>${noteHTML}`;
+}
+
+function buildRosterBlock(team, iso, data, sessionType, roster){
+  roster = roster || ROSTERS[team];
+  const trainingOnly = isTrainingType(sessionType); // entraînement/exempt : Présent ou Absent uniquement
+  const block = document.createElement("div");
+  block.innerHTML = `<div class="roster" id="roster-${team}"></div>`;
+  const rosterEl = block.querySelector(`#roster-${team}`);
+  roster.forEach(player=>{
+    const name = player.name;
+    const status = data[name] || null;
+    const row = document.createElement("div");
+    row.className = "prow";
+    row.innerHTML = `
+      <div class="pname">${name} <span class="gender-tag ${player.gender==="M"?"gt-tag-m":"gt-tag-f"}">${player.gender==="M"?"♂":"♀"}</span></div>
+      <div class="statusbtns">
+        <button class="sbtn ${status==="P"?"on-p":""}" data-s="P" title="Présent">P</button>
+        ${trainingOnly ? "" : `<button class="sbtn ${status==="D"?"on-d":""}" data-s="D" title="Disponible">D</button>`}
+        <button class="sbtn ${status==="A"?"on-a":""}" data-s="A" title="Absent">A</button>
+      </div>
+    `;
+    row.querySelectorAll(".sbtn").forEach(b=>{
+      b.addEventListener("click", async ()=>{
+        const s = b.dataset.s;
+        const prevValue = data[name];
+        data[name] = (prevValue===s) ? undefined : s;
+        if(data[name]===undefined) delete data[name];
+
+        // Retour visuel immédiat (optimiste) : on n'attend pas la fin de la sauvegarde
+        // pour montrer le changement, afin d'éviter toute sensation de lenteur au clic.
+        row.querySelectorAll(".sbtn").forEach(bb=>bb.classList.remove("on-p","on-d","on-a"));
+        if(data[name]){ const btn=row.querySelector(`[data-s="${data[name]}"]`); if(btn) btn.classList.add("on-"+data[name].toLowerCase()); }
+        const tallyEl = document.getElementById("tally-"+team);
+        if(tallyEl) tallyEl.innerHTML = tallyHTML(data, roster, sessionType);
+        updateRowCount(team, iso);
+
+        const ok = await saveAttendance(team, iso, data);
+        if(!ok){
+          // La sauvegarde a échoué malgré les tentatives : on annule le changement visuel
+          // pour ne jamais laisser affiché un état qui n'a pas réellement été enregistré.
+          if(prevValue===undefined) delete data[name]; else data[name] = prevValue;
+          row.querySelectorAll(".sbtn").forEach(bb=>bb.classList.remove("on-p","on-d","on-a"));
+          if(data[name]){ const btn=row.querySelector(`[data-s="${data[name]}"]`); if(btn) btn.classList.add("on-"+data[name].toLowerCase()); }
+          if(tallyEl) tallyEl.innerHTML = tallyHTML(data, roster, sessionType);
+          updateRowCount(team, iso);
+          showSaveError(row);
+        }
+      });
+    });
+    rosterEl.appendChild(row);
+  });
+  return block;
+}
+
+/* Affiche le détail + la feuille de présence d'UNE séance (team, date) dans #panel */
+/* Redessine la vue actuellement affichée (équipe seule ou vue commune) */
+function refreshCurrentView(){
+  if(currentTeam==="commun") renderTimelineCommun();
+  else if(currentTeam==="params") renderParamsPage();
+  else renderTimeline();
+}
+
+async function renderSessionDetail(panel, team, iso){
+  const s = findSession(team, iso);
+  if(!s){ panel.innerHTML = '<div class="empty-hint">Aucune séance à cette date.</div>'; return; }
+  const roster = effectiveRoster(team, iso);
+  const data = await loadAttendance(team, iso);
+  const actionIcons = team==="both" ? "" : `<button class="icon-btn" id="edit-sess" title="Modifier">✏️</button><button class="icon-btn" id="delete-sess" title="Supprimer">🗑️</button>`;
+  panel.innerHTML = `
+    <div class="sess-head sess-head-compact">
+      ${sessionHeadHTML(team, s, actionIcons)}
+    </div>
+  `;
+  if(team!=="both"){
+    panel.querySelector("#edit-sess").addEventListener("click", ()=> openMatchForm(team, s));
+    panel.querySelector("#delete-sess").addEventListener("click", ()=>{
+      if(confirm(`Supprimer définitivement cette séance du ${s.date} ?`)){
+        deleteSessionEntry(team, s.date);
+        expandedKey = null;
+        refreshCurrentView();
+      }
+    });
+  }
+  panel.appendChild(buildRosterBlock(team, iso, data, s.type, roster));
+}
+
+/* ===== Formulaire d'ajout / édition de match (ou autre type de séance) ===== */
+let formOpenFor = null; // {team, oldDate} de la séance en cours d'édition, ou null si formulaire fermé
+
+function closeMatchForm(){
+  formOpenFor = null;
+  const fp = document.getElementById("formPanel");
+  fp.style.display = "none";
+  fp.innerHTML = "";
+}
+
+function openMatchForm(team, existingSession){
+  formOpenFor = {team, oldDate: existingSession ? existingSession.date : null};
+  const fp = document.getElementById("formPanel");
+  fp.style.display = "block";
+  document.getElementById("bilanPanel").style.display = "none";
+  bilanOpenTeam = null;
+  closePlayerPanel();
+
+  const s = existingSession || {};
+  const homeVal = s.home===true ? "true" : (s.home===false ? "false" : "");
+
+  fp.innerHTML = `
+    <div class="sess-head">
+      <h2>${existingSession ? "Modifier la séance" : "Ajouter un match"} — ${TEAM_LABEL[team]}</h2>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Date</label>
+        <input type="date" id="f-date" value="${s.date||""}">
+      </div>
+      <div class="form-row">
+        <label>Type de séance</label>
+        <select id="f-type">
+          <option value="match" ${s.type==="match"||!s.type?"selected":""}>Match</option>
+          <option value="entrainement" ${s.type==="entrainement"?"selected":""}>Entraînement</option>
+          <option value="coupe" ${s.type==="coupe"?"selected":""}>Coupe du Calvados</option>
+          <option value="bye" ${s.type==="bye"?"selected":""}>Semaine exempte (pas de match)</option>
+        </select>
+      </div>
+    </div>
+    <div id="f-match-fields">
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Adversaire</label>
+          <input type="text" id="f-opponent" value="${s.opponent||""}" placeholder="Ex. Falaise 4">
+        </div>
+        <div class="form-row">
+          <label>Domicile / Extérieur</label>
+          <select id="f-home">
+            <option value="true" ${homeVal==="true"?"selected":""}>Domicile</option>
+            <option value="false" ${homeVal==="false"?"selected":""}>Extérieur</option>
+            <option value="" ${homeVal===""?"selected":""}>Inconnu / à confirmer</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Heure</label>
+          <input type="text" id="f-time" value="${s.time||"20h30"}" placeholder="Ex. 20h30">
+        </div>
+        <div class="form-row">
+          <label>Lieu</label>
+          <input type="text" id="f-place" value="${s.place||""}" placeholder="Ex. Gymnase Bieville-Beuville">
+        </div>
+      </div>
+    </div>
+    <div id="f-coupe-fields">
+      <div class="form-row">
+        <label>Libellé (Coupe)</label>
+        <input type="text" id="f-label" value="${s.label||""}" placeholder="Ex. Coupe du Calvados — 3e tour">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Remarque (optionnel)</label>
+      <input type="text" id="f-note" value="${s.note||""}" placeholder="Ex. Adversaire à confirmer selon tirage">
+    </div>
+    <label class="form-check">
+      <input type="checkbox" id="f-confirmed" ${s.confirmed===true?"checked":""}>
+      Information confirmée (cocher pour afficher ✓ — non confirmé par défaut)
+    </label>
+    <div class="form-actions">
+      <button class="btn-primary" id="f-save">💾 Enregistrer</button>
+      <button class="btn-secondary" id="f-cancel">Annuler</button>
+    </div>
+  `;
+
+  function toggleFieldsByType(){
+    const t = document.getElementById("f-type").value;
+    document.getElementById("f-match-fields").style.display = (t==="match") ? "block" : "none";
+    document.getElementById("f-coupe-fields").style.display = (t==="coupe") ? "block" : "none";
+  }
+  document.getElementById("f-type").addEventListener("change", toggleFieldsByType);
+  toggleFieldsByType();
+
+  document.getElementById("f-cancel").addEventListener("click", closeMatchForm);
+  document.getElementById("f-save").addEventListener("click", ()=> submitMatchForm(team));
+
+  fp.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+function submitMatchForm(team){
+  const date = document.getElementById("f-date").value;
+  if(!date){ alert("Merci de choisir une date."); return; }
+  const type = document.getElementById("f-type").value;
+
+  let extra = {};
+  if(type==="match"){
+    const opponent = document.getElementById("f-opponent").value.trim();
+    if(!opponent){ alert("Merci d'indiquer l'adversaire."); return; }
+    const homeStr = document.getElementById("f-home").value;
+    const home = homeStr==="true" ? true : (homeStr==="false" ? false : null);
+    const time = document.getElementById("f-time").value.trim();
+    const place = document.getElementById("f-place").value.trim();
+    // Une séance à l'extérieur qui tombe un lundi remplace l'entraînement, comme le reste du calendrier
+    const weekday = new Date(date+"T00:00:00").getDay();
+    const replaces = (home===true) ? true : (home===false ? weekday===1 : false);
+    extra = {opponent, home, time, place, replaces};
+  } else if(type==="coupe"){
+    const label = document.getElementById("f-label").value.trim() || "Coupe du Calvados";
+    extra = {label};
+  }
+  const note = document.getElementById("f-note").value.trim();
+  if(note) extra.note = note;
+  const confirmedChecked = document.getElementById("f-confirmed").checked;
+  extra.confirmed = confirmedChecked;
+
+  const newSession = S(date, type, extra);
+  saveSessionOverride(team, newSession, formOpenFor ? formOpenFor.oldDate : null);
+  closeMatchForm();
+  expandedKey = null;
+  refreshCurrentView();
+}
+
+/* ===== Vue "présences par joueur" : choisir un·e joueur·se, voir/cocher sa présence
+   sur toute la liste des matchs et entraînements, sans passer par chaque séance. ===== */
+let playerPanelOpenFor = null; // team ("team1"/"team2"/"commun") pour laquelle le panneau est ouvert, ou null
+let playerPanelSelection = {}; // mémorise le dernier joueur choisi par contexte, ex. {team1:"Elise Nguyen"}
+
+function playersForContext(context){
+  if(context==="commun"){
+    return [
+      ...ROSTERS.team1.map(p=>({...p, team:"team1"})),
+      ...ROSTERS.team2.map(p=>({...p, team:"team2"}))
+    ];
+  }
+  return ROSTERS[context].map(p=>({...p, team:context}));
+}
+
+function closePlayerPanel(){
+  playerPanelOpenFor = null;
+  const pp = document.getElementById("playerPanel");
+  pp.style.display = "none";
+  pp.innerHTML = "";
+}
+
+function openPlayerPanel(context){
+  if(playerPanelOpenFor===context){ closePlayerPanel(); renderToolbar(); return; }
+  closeMatchForm();
+  bilanOpenTeam = null;
+  document.getElementById("bilanPanel").style.display = "none";
+  document.getElementById("bilanPanel").innerHTML = "";
+  playerPanelOpenFor = context;
+  renderToolbar();
+  renderPlayerPanel(context);
+}
+
+function renderPlayerPanel(context){
+  const pp = document.getElementById("playerPanel");
+  pp.style.display = "block";
+  const players = playersForContext(context);
+  const currentSel = playerPanelSelection[context] || "";
+  pp.innerHTML = `
+    <div class="sess-head">
+      <h2>👤 Présences par joueur·se</h2>
+    </div>
+    <div class="player-select-row">
+      <select id="player-select">
+        <option value="">— Choisir un·e joueur·se —</option>
+        ${players.map(p=>`<option value="${p.team}|${p.name}" ${currentSel===(p.team+"|"+p.name)?"selected":""}>${p.name} ${p.gender==="M"?"♂":"♀"}${context==="commun" ? (p.team==="team1"?" · Éq.1":" · Éq.2") : ""}</option>`).join("")}
+      </select>
+    </div>
+    <div id="player-sess-container"></div>
+  `;
+  pp.querySelector("#player-select").addEventListener("change", (e)=>{
+    playerPanelSelection[context] = e.target.value;
+    renderPlayerSessionsList(context);
+  });
+  if(currentSel) renderPlayerSessionsList(context);
+}
+
+async function renderPlayerSessionsList(context){
+  const container = document.getElementById("player-sess-container");
+  if(!container) return;
+  const sel = playerPanelSelection[context];
+  if(!sel){ container.innerHTML = ""; return; }
+  const [team, playerName] = sel.split("|");
+  const sessions = effectiveSessions(team);
+  container.innerHTML = '<div class="empty-hint" style="padding:20px;">Chargement…</div>';
+
+  const listEl = document.createElement("div");
+  listEl.className = "player-sess-list";
+  let lastMonth = null;
+  const rows = [];
+  sessions.forEach(s=>{
+    const f = fmtDate(s.date);
+    const key = f.year+"-"+f.month;
+    if(key!==lastMonth){
+      lastMonth = key;
+      const ml = document.createElement("div");
+      ml.className = "player-month-label";
+      ml.textContent = f.monthLabel+" "+f.year;
+      listEl.appendChild(ml);
+    }
+    const {lbl, badge, badgeClass} = sessionLabel(s);
+    const row = document.createElement("div");
+    row.className = "player-sess-row";
+    row.innerHTML = `
+      <div class="psr-date">${String(f.day).padStart(2,"0")}/${String(f.month+1).padStart(2,"0")}</div>
+      <div class="psr-info">
+        <div class="psr-lbl">${lbl}</div>
+        <div class="psr-sub"><span class="badge ${badgeClass}" style="font-size:9px;">${badge}</span></div>
+      </div>
+      <div class="statusbtns" id="psr-btns-${s.date}">
+        <button class="sbtn" data-s="P" title="Présent">P</button>
+        ${isTrainingType(s.type) ? "" : `<button class="sbtn" data-s="D" title="Disponible">D</button>`}
+        <button class="sbtn" data-s="A" title="Absent">A</button>
+      </div>
+    `;
+    row.querySelectorAll(".sbtn").forEach(b=>{
+      b.addEventListener("click", async ()=>{
+        const data = await loadAttendance(team, s.date);
+        const prevValue = data[playerName];
+        const newStatus = b.dataset.s;
+        data[playerName] = (prevValue===newStatus) ? undefined : newStatus;
+        if(data[playerName]===undefined) delete data[playerName];
+
+        // Retour visuel immédiat (optimiste), sauvegarde en arrière-plan
+        row.querySelectorAll(".sbtn").forEach(bb=>bb.classList.remove("on-p","on-d","on-a"));
+        if(data[playerName]){ const btn=row.querySelector(`[data-s="${data[playerName]}"]`); if(btn) btn.classList.add("on-"+data[playerName].toLowerCase()); }
+        updateRowCount(team, s.date);
+
+        const ok = await saveAttendance(team, s.date, data);
+        if(!ok){
+          if(prevValue===undefined) delete data[playerName]; else data[playerName] = prevValue;
+          row.querySelectorAll(".sbtn").forEach(bb=>bb.classList.remove("on-p","on-d","on-a"));
+          if(data[playerName]){ const btn=row.querySelector(`[data-s="${data[playerName]}"]`); if(btn) btn.classList.add("on-"+data[playerName].toLowerCase()); }
+          updateRowCount(team, s.date);
+          showSaveError(row);
+        }
+      });
+    });
+    listEl.appendChild(row);
+    rows.push({date:s.date, row});
+  });
+  container.innerHTML = "";
+  container.appendChild(listEl);
+
+  // Charge le statut existant pour ce joueur, séance par séance, avec une concurrence limitée
+  await runWithLimit(rows, async ({date, row})=>{
+    const data = await loadAttendance(team, date);
+    const status = data[playerName];
+    if(status){
+      const btn = row.querySelector(`[data-s="${status}"]`);
+      if(btn) btn.classList.add("on-"+status.toLowerCase());
+    }
+  }, 2, 250);
+}
+
+function openBilan(team){
+  const bp = document.getElementById("bilanPanel");
+  if(bilanOpenTeam===team){
+    bilanOpenTeam = null;
+    bp.style.display = "none";
+    bp.innerHTML = "";
+    renderToolbar();
+    return;
+  }
+  closeMatchForm();
+  closePlayerPanel();
+  bilanOpenTeam = team;
+  bp.style.display = "block";
+  renderToolbar();
+  renderBilan(team);
+}
+
+async function renderBilan(team){
+  const panel = document.getElementById("bilanPanel");
+  const roster = ROSTERS[team];
+  const allDates = effectiveSessions(team).map(s=>s.date);
+  panel.innerHTML = `
+    <div class="sess-head">
+      <h2>Bilan de présence — ${TEAM_LABEL[team]}</h2>
+      <div class="sess-meta"><span>Cumul sur toutes les séances déjà renseignées</span></div>
+    </div>
+    <div class="bilan-note">Chargement…</div>
+  `;
+
+  const counts = {};
+  roster.forEach(p=> counts[p.name] = {P:0,D:0,A:0,total:0});
+  let sessionsCounted = 0;
+
+  for(const iso of allDates){
+    const data = await loadAttendance(team, iso);
+    if(!data || Object.keys(data).length===0) continue;
+    sessionsCounted++;
+    roster.forEach(p=>{
+      const s = data[p.name];
+      if(s==="P"||s==="D"||s==="A"){
+        counts[p.name][s]++;
+        counts[p.name].total++;
+      }
+    });
+  }
+
+  const note = panel.querySelector(".bilan-note");
+  if(sessionsCounted===0){
+    note.textContent = "Aucune séance renseignée pour l'instant.";
+    return;
+  }
+  note.textContent = `${sessionsCounted} séance(s) renseignée(s) sur ${allDates.length} possibles.`;
+
+  // Résumé garçons/filles cumulé sur la saison (présents + disponibles)
+  let mAvail=0, mTotal=0, fAvail=0, fTotal=0;
+  roster.forEach(p=>{
+    const c = counts[p.name];
+    if(p.gender==="M"){ mAvail += c.P+c.D; mTotal += c.total; }
+    else { fAvail += c.P+c.D; fTotal += c.total; }
+  });
+  const genderSummary = document.createElement("div");
+  genderSummary.className = "gendertally";
+  genderSummary.style.marginBottom = "12px";
+  genderSummary.innerHTML = `
+    <span class="gt-f">♀ Filles présentes/dispos (cumul) : <b>${fAvail}</b>/${fTotal}</span>
+    <span class="gt-m">♂ Garçons présents/dispos (cumul) : <b>${mAvail}</b>/${mTotal}</span>
+  `;
+  panel.appendChild(genderSummary);
+
+  const tbl = document.createElement("table");
+  tbl.className = "bilan";
+  tbl.innerHTML = `
+    <thead><tr><th>Joueur·se</th><th>Présent</th><th>Dispo</th><th>Absent</th><th>Taux présent+dispo</th></tr></thead>
+    <tbody></tbody>
+  `;
+  const tbody = tbl.querySelector("tbody");
+  roster.forEach(p=>{
+    const name = p.name;
+    const c = counts[name];
+    const rate = c.total>0 ? Math.round(((c.P+c.D)/c.total)*100) : 0;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${name} <span class="gender-tag ${p.gender==="M"?"gt-tag-m":"gt-tag-f"}">${p.gender==="M"?"♂":"♀"}</span></td>
+      <td>${c.P}</td>
+      <td>${c.D}</td>
+      <td>${c.A}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="bar-wrap"><div class="bar-fill" style="width:${rate}%"></div></div>
+          <span style="font-family:var(--font-mono);font-size:12px;width:36px;">${rate}%</span>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  panel.appendChild(tbl);
+}
+
+/* ===== Vue commune : une ligne par événement, colonne équipe =====
+   Quand un entraînement est commun aux 2 équipes (aucune des 2 n'a match ce jour-là),
+   on ne montre qu'UNE seule ligne "both" au lieu d'une ligne par équipe. */
+function mergedEvents(){
+  const t1 = effectiveSessions("team1");
+  const t2 = effectiveSessions("team2");
+  const t2ByDate = {};
+  t2.forEach(s=> t2ByDate[s.date]=s);
+  const rows = [];
+  const consumedT2Dates = new Set();
+  t1.forEach(s=>{
+    const s2 = t2ByDate[s.date];
+    if(s2 && isTrainingType(s.type) && isTrainingType(s2.type)){
+      rows.push({team:"both", session:s});
+      consumedT2Dates.add(s.date);
+    } else {
+      rows.push({team:"team1", session:s});
+    }
+  });
+  t2.forEach(s=>{
+    if(consumedT2Dates.has(s.date)) return;
+    rows.push({team:"team2", session:s});
+  });
+  rows.sort((a,b)=>{
+    if(a.session.date !== b.session.date) return a.session.date < b.session.date ? -1 : 1;
+    return a.team < b.team ? -1 : 1;
+  });
+  return rows;
+}
+
+function renderTimelineCommun(){
+  renderGeneration++;
+  const myGen = renderGeneration;
+  const el = document.getElementById("timeline");
+  el.innerHTML = "";
+  let lastMonth = null;
+  const countTargets = [];
+  mergedEvents().forEach(({team, session:s})=>{
+    const iso = s.date;
+    const f = fmtDate(iso);
+    const key = f.year+"-"+f.month;
+    if(key!==lastMonth){
+      lastMonth = key;
+      const ml = document.createElement("div");
+      ml.className="month-label";
+      ml.textContent = f.monthLabel+" "+f.year;
+      el.appendChild(ml);
+    }
+    const {lbl, badge, badgeClass} = sessionLabel(s);
+    const rowKey = team+":"+iso;
+    const row = document.createElement("div");
+    row.className = "sess"+(expandedKey===rowKey?" selected":"");
+    const teamPill = team==="both" ? `<div class="teamcol t-both">👥</div>` : `<div class="teamcol t-${team}">${team==="team1"?"Éq.1":"Éq.2"}</div>`;
+    row.innerHTML = `
+      <div class="sess-top">
+        <div class="d">${String(f.day).padStart(2,"0")}</div>
+        <div class="lbl">${lbl}</div>
+        <div class="badge ${badgeClass}">${badge}</div>
+      </div>
+      <div class="sess-bottom">
+        ${teamPill}
+        <div class="sub">${DAYNAME[f.weekday]}${timeForSession(s) ? " · <span class=\"row-time\">"+timeForSession(s)+"</span>" : ""}${s.note && s.type==="entrainement" ? " · "+s.note : ""}</div>
+        <div class="rowcount" id="rc-${team}-${iso}"></div>
+      </div>
+    `;
+    row.addEventListener("click", ()=> toggleRow(row, team, iso));
+    el.appendChild(row);
+    countTargets.push({team, iso});
+    if(expandedKey===rowKey){
+      const detail = document.createElement("div");
+      detail.className = "detail";
+      el.appendChild(detail);
+      renderSessionDetail(detail, team, iso);
+    }
+  });
+  populateCachedRowCounts(countTargets);
+}
+
+function renderToolbar(){
+  const tb = document.getElementById("toolbar");
+  if(currentTeam==="commun"){
+    tb.innerHTML = `
+      <button id="bilan-team1" class="${bilanOpenTeam==="team1"?"active":""}">📊 Bilan Équipe 1</button>
+      <button id="bilan-team2" class="${bilanOpenTeam==="team2"?"active":""}">📊 Bilan Équipe 2</button>
+      <button id="player-view" class="${playerPanelOpenFor==="commun"?"active":""}">👤 Par joueur</button>
+    `;
+    tb.querySelector("#bilan-team1").addEventListener("click", ()=> openBilan("team1"));
+    tb.querySelector("#bilan-team2").addEventListener("click", ()=> openBilan("team2"));
+    tb.querySelector("#player-view").addEventListener("click", ()=> openPlayerPanel("commun"));
+  } else if(currentTeam==="params"){
+    tb.innerHTML = "";
+  } else {
+    tb.innerHTML = `
+      <button id="bilan-current" class="${bilanOpenTeam===currentTeam?"active":""}">📊 Bilan saison — ${TEAM_LABEL[currentTeam]}</button>
+      <button id="player-view" class="${playerPanelOpenFor===currentTeam?"active":""}">👤 Par joueur</button>
+      <button id="add-match">➕ Ajouter un match</button>
+    `;
+    tb.querySelector("#bilan-current").addEventListener("click", ()=> openBilan(currentTeam));
+    tb.querySelector("#player-view").addEventListener("click", ()=> openPlayerPanel(currentTeam));
+    tb.querySelector("#add-match").addEventListener("click", ()=> openMatchForm(currentTeam, null));
+  }
+}
+
+/* Éq.1 et Éq.2 sont maintenant deux boutons indépendants qu'on peut activer
+   ensemble (vue commune) ou séparément. Le bouton ⚙ ouvre les paramètres et
+   n'affecte pas cette sélection : on y revient tel qu'on l'avait laissée. */
+let activeTeams = new Set(["team1","team2"]);
+let showParams = false;
+
+function computeCurrentTeam(){
+  if(showParams) return "params";
+  if(activeTeams.size===2) return "commun";
+  return activeTeams.has("team1") ? "team1" : "team2";
+}
+
+function applyViewChange(){
+  currentTeam = computeCurrentTeam();
+  expandedKey = null;
+  bilanOpenTeam = null;
+  closeMatchForm();
+  closePlayerPanel();
+  document.getElementById("bilanPanel").style.display = "none";
+  document.getElementById("bilanPanel").innerHTML = "";
+  document.getElementById("tab-team1").classList.toggle("active", activeTeams.has("team1"));
+  document.getElementById("tab-team2").classList.toggle("active", activeTeams.has("team2"));
+  document.getElementById("tab-params").classList.toggle("active", showParams);
+  renderToolbar();
+  refreshCurrentView();
+}
+
+function toggleTeamButton(team){
+  showParams = false;
+  if(activeTeams.has(team)){
+    if(activeTeams.size>1) activeTeams.delete(team); // toujours garder au moins une équipe active
+  } else {
+    activeTeams.add(team);
+  }
+  applyViewChange();
+}
+
+document.getElementById("tab-team1").addEventListener("click", ()=> toggleTeamButton("team1"));
+document.getElementById("tab-team2").addEventListener("click", ()=> toggleTeamButton("team2"));
+document.getElementById("tab-params").addEventListener("click", ()=>{
+  showParams = !showParams;
+  applyViewChange();
+});
+
+/* ===== Page Paramètres : gestion des effectifs (ajout / renommage / suppression) ===== */
+/* ===== Import / Export : sauvegarde complète (effectifs, calendrier personnalisé, présences) ===== */
+function todayStamp(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+function downloadJSON(obj, filename){
+  downloadBlob(new Blob([JSON.stringify(obj, null, 2)], {type:"application/json"}), filename);
+}
+function csvEscape(val){
+  const s = (val===null||val===undefined) ? "" : String(val);
+  if(/[";\n]/.test(s)) return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function downloadCSV(rows, filename){
+  // Point-virgule comme séparateur (convention Excel FR) + BOM pour un affichage correct des accents
+  const csv = rows.map(r=> r.map(csvEscape).join(";")).join("\r\n");
+  downloadBlob(new Blob(["\ufeff"+csv], {type:"text/csv;charset=utf-8;"}), filename);
+}
+
+/* Récupère toutes les présences enregistrées, regroupées par équipe puis par date,
+   avec une concurrence limitée pour éviter le rate limit du stockage. */
+async function fetchAttendanceMap(){
+  const map = {team1:{}, team2:{}, commun:{}};
+  for(const team of ["team1","team2","commun"]){
+    let keys = [];
+    try{
+      const res = await backendList("attendance:"+team+":", true);
+      keys = (res && res.keys) ? res.keys : [];
+    }catch(e){ logSilently("storage.list", e); }
+    await runWithLimit(keys, async (key)=>{
+      try{
+        const res = await backendGet(key, true);
+        if(res){
+          const date = key.split(":")[2];
+          map[team][date] = JSON.parse(res.value);
+        }
+      }catch(e){ /* ignore une clé en erreur */ }
+    }, 2, 250);
+  }
+  return map;
+}
+
+async function exportAllData(btn){
+  const originalLabel = btn.textContent;
+  btn.textContent = "⏳ Export en cours…";
+  btn.disabled = true;
+  try{
+    const attendance = {};
+    for(const team of ["team1","team2","commun"]){
+      let keys = [];
+      try{
+        const res = await backendList("attendance:"+team+":", true);
+        keys = (res && res.keys) ? res.keys : [];
+      }catch(e){ logSilently("storage.list", e); }
+      await runWithLimit(keys, async (key)=>{
+        try{
+          const res = await backendGet(key, true);
+          if(res) attendance[key] = res.value;
+        }catch(e){ /* ignore une clé en erreur */ }
+      }, 2, 250);
+    }
+    const exportObj = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      club: "ASVB Bieville-Beuville",
+      rosters: ROSTERS,
+      sessionOverrides: sessionOverrides,
+      attendance: attendance
+    };
+    downloadJSON(exportObj, `asvb-bieville-export-${todayStamp()}.json`);
+  }catch(e){
+    logSilently("export", e);
+    alert("Une erreur est survenue pendant l'export.");
+  }finally{
+    btn.textContent = originalLabel;
+    btn.disabled = false;
+  }
+}
+
+const TYPE_LABEL_FR = {match:"Match", entrainement:"Entraînement", coupe:"Coupe", bye:"Exempt"};
+const STATUS_LABEL_FR = {P:"Présent", D:"Disponible", A:"Absent"};
+
+async function exportCSV(btn){
+  const originalLabel = btn.textContent;
+  btn.textContent = "⏳ Export en cours…";
+  btn.disabled = true;
+  try{
+    const attMap = await fetchAttendanceMap();
+    const rows = [[
+      "Équipe","Date","Jour","Type","Adversaire / Libellé","Domicile ou Extérieur",
+      "Heure","Lieu","Joueur·se","Genre","Statut"
+    ]];
+    for(const team of ["team1","team2"]){
+      const sessions = effectiveSessions(team);
+      const roster = ROSTERS[team];
+      sessions.forEach(s=>{
+        const isCommon = isTrainingType(s.type) && isCommonTrainingDate(s.date);
+        const data = isCommon ? (attMap.commun[s.date]||{}) : ((attMap[team] && attMap[team][s.date]) || {});
+        const f = fmtDate(s.date);
+        const dayName = DAYNAME[f.weekday];
+        const typeLabel = TYPE_LABEL_FR[s.type] || s.type;
+        const homeLabel = s.type==="match" ? (s.home===true?"Domicile":(s.home===false?"Extérieur":"À confirmer")) : "";
+        const oppOrLabel = s.opponent || s.label || "";
+        roster.forEach(p=>{
+          const statusRaw = data[p.name] || "";
+          rows.push([
+            TEAM_LABEL[team], s.date, dayName, typeLabel, oppOrLabel, homeLabel,
+            s.time||"", s.place||"", p.name, p.gender==="M"?"Garçon":"Fille",
+            STATUS_LABEL_FR[statusRaw] || ""
+          ]);
+        });
+      });
+    }
+    downloadCSV(rows, `asvb-bieville-export-${todayStamp()}.csv`);
+  }catch(e){
+    logSilently("export", e);
+    alert("Une erreur est survenue pendant l'export CSV.");
+  }finally{
+    btn.textContent = originalLabel;
+    btn.disabled = false;
+  }
+}
+
+async function handleImportFile(fileInput, statusEl){
+  const file = fileInput.files[0];
+  if(!file) return;
+  let data;
+  try{
+    data = JSON.parse(await file.text());
+  }catch(e){
+    alert("Fichier illisible : ce n'est pas un export JSON valide.");
+    fileInput.value = "";
+    return;
+  }
+  if(!data || typeof data !== "object" || !("version" in data)){
+    alert("Ce fichier ne ressemble pas à un export de cet outil.");
+    fileInput.value = "";
+    return;
+  }
+  const nbPlayers = (data.rosters?.team1?.length||0) + (data.rosters?.team2?.length||0);
+  const nbCustomSessions = Object.keys(data.sessionOverrides?.team1||{}).length + Object.keys(data.sessionOverrides?.team2||{}).length;
+  const nbAttendance = Object.keys(data.attendance||{}).length;
+  const exportedAt = data.exportedAt ? new Date(data.exportedAt).toLocaleString("fr-FR") : "date inconnue";
+  const confirmMsg = `Fichier exporté le ${exportedAt} :\n`
+    + `• ${nbPlayers} joueur·se(s) au total\n`
+    + `• ${nbCustomSessions} séance(s) personnalisée(s) (ajout/modif/suppr.)\n`
+    + `• ${nbAttendance} feuille(s) de présence\n\n`
+    + `⚠️ Cela REMPLACE les données actuelles, partagées avec tous les utilisateurs de cet outil. Continuer ?`;
+  if(!confirm(confirmMsg)){ fileInput.value = ""; return; }
+
+  if(statusEl) statusEl.textContent = "Import en cours…";
+
+  if(data.rosters){
+    for(const team of ["team1","team2"]){
+      if(Array.isArray(data.rosters[team])){
+        ROSTERS[team] = data.rosters[team];
+        persistRoster(team);
+      }
+    }
+  }
+  if(data.sessionOverrides){
+    for(const team of ["team1","team2"]){
+      if(data.sessionOverrides[team]){
+        sessionOverrides[team] = data.sessionOverrides[team];
+        persistSessionOverrides(team);
+      }
+    }
+  }
+  if(data.attendance){
+    const keys = Object.keys(data.attendance);
+    await runWithLimit(keys, async (key)=>{
+      try{
+        await backendSet(key, data.attendance[key], true);
+        attendanceCache[key] = JSON.parse(data.attendance[key]);
+      }catch(e){ logSilently("import:"+key, e); }
+    }, 2, 250);
+  }
+
+  fileInput.value = "";
+  if(statusEl) statusEl.textContent = "✓ Import terminé.";
+  refreshCurrentView();
+}
+
+function renderImportExportSection(){
+  return `
+    <div class="panel" style="margin-bottom:16px;">
+      <h3 style="margin-top:0;font-family:var(--font-display);font-weight:800;text-transform:uppercase;font-size:16px;">💾 Sauvegarde des données</h3>
+      <p style="color:var(--muted);font-size:13px;margin-top:0;">
+        Exportez les effectifs, le calendrier personnalisé et toutes les feuilles de présence, ou restaurez une sauvegarde précédente.
+        L'import remplace les données actuelles pour tous les utilisateurs.
+      </p>
+      <div class="form-actions">
+        <button class="btn-primary" id="export-btn">⬇️ Exporter tout (JSON — pour ré-importer plus tard)</button>
+        <button class="btn-secondary" id="export-csv-btn">⬇️ Exporter en CSV (pour Excel)</button>
+        <button class="btn-secondary" id="import-btn">⬆️ Importer une sauvegarde JSON</button>
+        <input type="file" id="import-file-input" accept="application/json" style="display:none;">
+      </div>
+      <div id="import-status" style="color:var(--muted);font-size:12px;margin-top:8px;"></div>
+    </div>
+  `;
+}
+
+function wireImportExportSection(){
+  document.getElementById("export-btn").addEventListener("click", (e)=> exportAllData(e.target));
+  document.getElementById("export-csv-btn").addEventListener("click", (e)=> exportCSV(e.target));
+  const fileInput = document.getElementById("import-file-input");
+  document.getElementById("import-btn").addEventListener("click", ()=> fileInput.click());
+  fileInput.addEventListener("change", ()=> handleImportFile(fileInput, document.getElementById("import-status")));
+}
+
+function renderParamsPage(){
+  const el = document.getElementById("timeline");
+  el.innerHTML = `
+    <div class="panel" style="border:none;border-radius:0;">
+      ${renderImportExportSection()}
+      <div id="params-team1" class="params-team p-team1"></div>
+      <div id="params-team2" class="params-team p-team2"></div>
+    </div>
+  `;
+  wireImportExportSection();
+  renderParamsTeam("team1");
+  renderParamsTeam("team2");
+}
+
+function renderParamsTeam(team){
+  const container = document.getElementById(`params-team${team==="team1"?1:2}`);
+  const roster = ROSTERS[team];
+  const mgr = MANAGERS[team];
+  container.innerHTML = `
+    <h3>${TEAM_LABEL[team]} <span style="color:var(--muted);font-size:12px;font-family:var(--font-mono);text-transform:none;">(${roster.length} joueur·ses)</span></h3>
+    <div class="manager-box" id="manager-box-${team}">
+      <div class="manager-info">
+        <span class="manager-label">👤 Responsable d'équipe</span>
+        <span class="manager-name">${mgr.name || "(non renseigné)"}</span>
+        ${mgr.email ? `<a href="mailto:${mgr.email}" class="manager-email">✉️ ${mgr.email}</a>` : ""}
+      </div>
+      <button class="icon-btn" id="edit-manager-${team}">✏️</button>
+    </div>
+    <div class="plist" id="plist-${team}"></div>
+    <div class="add-player-row">
+      <input type="text" id="new-name-${team}" placeholder="Nom du ou de la joueur·se">
+      <select id="new-gender-${team}">
+        <option value="F">♀ Fille</option>
+        <option value="M">♂ Garçon</option>
+      </select>
+      <button class="btn-primary" id="add-player-${team}">➕ Ajouter</button>
+    </div>
+  `;
+  container.querySelector(`#edit-manager-${team}`).addEventListener("click", ()=> openEditManagerForm(team));
+  const plist = container.querySelector(`#plist-${team}`);
+  roster.forEach((player, idx)=>{
+    const row = document.createElement("div");
+    row.className = "prow-param";
+    row.innerHTML = `
+      <span class="pname">${player.name}</span>
+      <span class="gender-tag ${player.gender==="M"?"gt-tag-m":"gt-tag-f"}">${player.gender==="M"?"♂":"♀"}</span>
+      <div class="action-icons">
+        <button class="icon-btn" data-act="edit">✏️</button>
+        <button class="icon-btn" data-act="del">🗑</button>
+      </div>
+    `;
+    row.querySelector('[data-act="edit"]').addEventListener("click", ()=> openEditPlayerForm(team, idx, row));
+    row.querySelector('[data-act="del"]').addEventListener("click", ()=>{
+      if(confirm(`Retirer ${player.name} de l'effectif ${TEAM_LABEL[team]} ?\n(L'historique de présence déjà enregistré est conservé mais ne sera plus affiché.)`)){
+        ROSTERS[team].splice(idx,1);
+        persistRoster(team);
+        renderParamsTeam(team);
+      }
+    });
+    plist.appendChild(row);
+  });
+  container.querySelector(`#add-player-${team}`).addEventListener("click", ()=>{
+    const nameInput = container.querySelector(`#new-name-${team}`);
+    const name = nameInput.value.trim();
+    if(!name){ alert("Merci de saisir un nom."); return; }
+    const gender = container.querySelector(`#new-gender-${team}`).value;
+    ROSTERS[team].push(PL(name, gender));
+    persistRoster(team);
+    renderParamsTeam(team);
+  });
+}
+
+function openEditManagerForm(team){
+  const box = document.getElementById(`manager-box-${team}`);
+  const mgr = MANAGERS[team];
+  box.innerHTML = `
+    <div class="manager-info" style="flex:1;">
+      <span class="manager-label">👤 Responsable d'équipe</span>
+      <input type="text" id="edit-mgr-name" value="${mgr.name||""}" placeholder="Nom du ou de la responsable" style="margin-bottom:6px;">
+      <input type="email" id="edit-mgr-email" value="${mgr.email||""}" placeholder="Adresse e-mail">
+    </div>
+    <div class="action-icons">
+      <button class="icon-btn" id="save-manager-${team}">💾</button>
+      <button class="icon-btn" id="cancel-manager-${team}">✕</button>
+    </div>
+  `;
+  box.querySelector(`#save-manager-${team}`).addEventListener("click", ()=>{
+    const name = box.querySelector("#edit-mgr-name").value.trim();
+    const email = box.querySelector("#edit-mgr-email").value.trim();
+    MANAGERS[team] = {name, email};
+    persistManager(team);
+    renderParamsTeam(team);
+  });
+  box.querySelector(`#cancel-manager-${team}`).addEventListener("click", ()=> renderParamsTeam(team));
+}
+
+function openEditPlayerForm(team, idx, rowEl){
+  const player = ROSTERS[team][idx];
+  rowEl.innerHTML = `
+    <input type="text" id="edit-name" value="${player.name}" style="flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:6px 8px;border-radius:6px;">
+    <select id="edit-gender" style="background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:6px 8px;border-radius:6px;">
+      <option value="F" ${player.gender==="F"?"selected":""}>♀ Fille</option>
+      <option value="M" ${player.gender==="M"?"selected":""}>♂ Garçon</option>
+    </select>
+    <div class="action-icons">
+      <button class="icon-btn" id="save-edit">💾</button>
+      <button class="icon-btn" id="cancel-edit">✕</button>
+    </div>
+  `;
+  rowEl.querySelector("#save-edit").addEventListener("click", ()=>{
+    const newName = rowEl.querySelector("#edit-name").value.trim();
+    if(!newName){ alert("Le nom ne peut pas être vide."); return; }
+    ROSTERS[team][idx] = PL(newName, rowEl.querySelector("#edit-gender").value);
+    persistRoster(team);
+    renderParamsTeam(team);
+  });
+  rowEl.querySelector("#cancel-edit").addEventListener("click", ()=> renderParamsTeam(team));
+}
+
+/* Chargement initial : effectifs personnalisés + calendrier personnalisé depuis le stockage,
+   avant le premier rendu, pour éviter d'afficher les valeurs par défaut puis de les remplacer. */
+async function init(){
+  // Affichage immédiat (valeurs par défaut déjà en mémoire) : l'appli n'est jamais vide,
+  // même si le chargement des personnalisations enregistrées est lent ou échoue.
+  currentTeam = computeCurrentTeam();
+  document.getElementById("tab-team1").classList.toggle("active", activeTeams.has("team1"));
+  document.getElementById("tab-team2").classList.toggle("active", activeTeams.has("team2"));
+  applyTheme();
+  renderToolbar();
+  refreshCurrentView();
+
+  // Puis on charge en arrière-plan les effectifs/calendrier/responsables/thème personnalisés
+  // et on rafraîchit l'affichage une fois disponibles.
+  try{
+    await Promise.all([loadRosters(), loadSessionOverrides(), loadManagers(), loadThemePref()]);
+  }catch(e){
+    logSilently("init", e);
+  }
+  applyTheme();
+  renderToolbar();
+  refreshCurrentView();
+}
+init();
+</script>
+</body>
+</html>

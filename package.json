@@ -1,0 +1,9 @@
+{
+  "name": "asvb-bieville-presences",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Outil de gestion des présences ASVB Bièville-Beuville (Netlify + Netlify Blobs)",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

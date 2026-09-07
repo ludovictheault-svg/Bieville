@@ -1,0 +1,7 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# Pas de commande de build : le site est un simple fichier HTML statique,
+# seule la fonction serverless (Netlify Blobs) a besoin de sa dépendance npm,
+# installée automatiquement par Netlify au déploiement.
