@@ -178,7 +178,15 @@
     background:rgba(226,87,76,0.1);border:1px solid rgba(226,87,76,0.35);
     border-radius:6px;padding:5px 10px;margin-top:-2px;
     animation:fadeIn .15s ease;
+    display:flex;align-items:center;gap:6px;flex-wrap:wrap;
   }
+  .save-retry-btn{
+    background:var(--absent);color:#fff;border:none;
+    padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;
+    cursor:pointer;
+  }
+  .save-retry-btn:disabled{opacity:.6;cursor:default;}
+  .save-error-detail{font-size:10px;color:var(--muted);font-weight:400;margin-top:2px;font-family:var(--font-mono);word-break:break-all;}
   @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
   .badge{
     font-size:10px;font-weight:700;letter-spacing:.4px;
@@ -937,25 +945,45 @@ async function withRetry(fn, retries, baseDelay){
     try{ return await fn(); }
     catch(e){
       lastErr = e;
-      if(i<retries) await new Promise(r=>setTimeout(r, baseDelay*Math.pow(2,i)));
+      if(i<retries){
+        // un peu de dispersion aléatoire : évite que plusieurs appareils qui échouent
+        // au même moment ne retentent tous exactement en même temps (effet de cohue)
+        const jitter = 0.7 + Math.random()*0.6;
+        await new Promise(r=>setTimeout(r, baseDelay*Math.pow(1.8,i)*jitter));
+      }
     }
   }
   throw lastErr;
 }
 
-/* Affiche un petit message d'erreur discret juste sous la ligne concernée, sans bloquer
-   l'interface (contrairement à alert(), qui interrompait l'utilisateur parfois plusieurs
-   secondes après son action, de façon déroutante). Disparaît tout seul. */
-function showSaveError(rowEl){
+/* Affiche un petit message d'erreur discret juste sous la ligne concernée, avec un
+   bouton "Réessayer" qui relance exactement la même action — sans bloquer l'interface
+   (contrairement à alert(), qui interrompait l'utilisateur de façon déroutante). */
+let lastSaveErrorDetail = "";
+
+function showSaveError(rowEl, retryFn){
   let msg = rowEl.nextElementSibling;
   if(!msg || !msg.classList.contains("save-error-msg")){
     msg = document.createElement("div");
     msg.className = "save-error-msg";
     rowEl.insertAdjacentElement("afterend", msg);
   }
-  msg.textContent = "❌ Non enregistré — réessayez";
-  clearTimeout(msg._hideTimer);
-  msg._hideTimer = setTimeout(()=>{ msg.remove(); }, 4000);
+  const detail = lastSaveErrorDetail ? `<div class="save-error-detail">${lastSaveErrorDetail}</div>` : "";
+  msg.innerHTML = `
+    <div>❌ Non enregistré ${retryFn ? `— <button type="button" class="save-retry-btn">🔄 Réessayer</button>` : "— réessayez"}</div>
+    ${detail}
+  `;
+  // Ce message reste affiché tant que ce n'est pas réellement enregistré : le faire
+  // disparaître tout seul après quelques secondes donnait l'impression, à tort, que
+  // le clic sur "Réessayer" n'avait aucun effet quand l'utilisateur revenait trop tard.
+  if(retryFn){
+    msg.querySelector(".save-retry-btn").addEventListener("click", async (e)=>{
+      const btn = e.target;
+      btn.disabled = true;
+      btn.textContent = "⏳ …";
+      await retryFn();
+    });
+  }
 }
 
 async function loadAttendance(team, iso){
@@ -974,10 +1002,12 @@ async function saveAttendance(team, iso, data){
   const key = storageKey(team, iso);
   attendanceCache[key] = data;
   try{
-    await withRetry(()=>backendSet(key, JSON.stringify(data), true), 2, 300);
+    await withRetry(()=>backendSet(key, JSON.stringify(data), true), 4, 350);
+    lastSaveErrorDetail = "";
     return true;
   }catch(e){
     logSilently("saveAttendance", e);
+    lastSaveErrorDetail = "Détail technique : " + (e && e.message ? e.message : String(e));
     return false;
   }
 }
@@ -1108,33 +1138,36 @@ function buildRosterBlock(team, iso, data, sessionType, roster){
         <button class="sbtn ${status==="A"?"on-a":""}" data-s="A" title="Absent">A</button>
       </div>
     `;
-    row.querySelectorAll(".sbtn").forEach(b=>{
-      b.addEventListener("click", async ()=>{
-        const s = b.dataset.s;
-        const prevValue = data[name];
-        data[name] = (prevValue===s) ? undefined : s;
-        if(data[name]===undefined) delete data[name];
+    async function attemptStatusChange(targetStatus){
+      const prevValue = data[name];
+      data[name] = (prevValue===targetStatus) ? undefined : targetStatus;
+      if(data[name]===undefined) delete data[name];
 
-        // Retour visuel immédiat (optimiste) : on n'attend pas la fin de la sauvegarde
-        // pour montrer le changement, afin d'éviter toute sensation de lenteur au clic.
+      // Retour visuel immédiat (optimiste) : on n'attend pas la fin de la sauvegarde
+      // pour montrer le changement, afin d'éviter toute sensation de lenteur au clic.
+      row.querySelectorAll(".sbtn").forEach(bb=>bb.classList.remove("on-p","on-d","on-a"));
+      if(data[name]){ const btn=row.querySelector(`[data-s="${data[name]}"]`); if(btn) btn.classList.add("on-"+data[name].toLowerCase()); }
+      const tallyEl = document.getElementById("tally-"+team);
+      if(tallyEl) tallyEl.innerHTML = tallyHTML(data, roster, sessionType);
+      updateRowCount(team, iso);
+
+      const ok = await saveAttendance(team, iso, data);
+      if(!ok){
+        // La sauvegarde a échoué malgré les tentatives : on annule le changement visuel
+        // pour ne jamais laisser affiché un état qui n'a pas réellement été enregistré.
+        if(prevValue===undefined) delete data[name]; else data[name] = prevValue;
         row.querySelectorAll(".sbtn").forEach(bb=>bb.classList.remove("on-p","on-d","on-a"));
         if(data[name]){ const btn=row.querySelector(`[data-s="${data[name]}"]`); if(btn) btn.classList.add("on-"+data[name].toLowerCase()); }
-        const tallyEl = document.getElementById("tally-"+team);
         if(tallyEl) tallyEl.innerHTML = tallyHTML(data, roster, sessionType);
         updateRowCount(team, iso);
-
-        const ok = await saveAttendance(team, iso, data);
-        if(!ok){
-          // La sauvegarde a échoué malgré les tentatives : on annule le changement visuel
-          // pour ne jamais laisser affiché un état qui n'a pas réellement été enregistré.
-          if(prevValue===undefined) delete data[name]; else data[name] = prevValue;
-          row.querySelectorAll(".sbtn").forEach(bb=>bb.classList.remove("on-p","on-d","on-a"));
-          if(data[name]){ const btn=row.querySelector(`[data-s="${data[name]}"]`); if(btn) btn.classList.add("on-"+data[name].toLowerCase()); }
-          if(tallyEl) tallyEl.innerHTML = tallyHTML(data, roster, sessionType);
-          updateRowCount(team, iso);
-          showSaveError(row);
-        }
-      });
+        showSaveError(row, ()=>attemptStatusChange(targetStatus));
+      } else {
+        const existingMsg = row.nextElementSibling;
+        if(existingMsg && existingMsg.classList.contains("save-error-msg")) existingMsg.remove();
+      }
+    }
+    row.querySelectorAll(".sbtn").forEach(b=>{
+      b.addEventListener("click", ()=> attemptStatusChange(b.dataset.s));
     });
     rosterEl.appendChild(row);
   });
@@ -1399,28 +1432,31 @@ async function renderPlayerSessionsList(context){
         <button class="sbtn" data-s="A" title="Absent">A</button>
       </div>
     `;
-    row.querySelectorAll(".sbtn").forEach(b=>{
-      b.addEventListener("click", async ()=>{
-        const data = await loadAttendance(team, s.date);
-        const prevValue = data[playerName];
-        const newStatus = b.dataset.s;
-        data[playerName] = (prevValue===newStatus) ? undefined : newStatus;
-        if(data[playerName]===undefined) delete data[playerName];
+    async function attemptPlayerStatusChange(targetStatus){
+      const data = await loadAttendance(team, s.date);
+      const prevValue = data[playerName];
+      data[playerName] = (prevValue===targetStatus) ? undefined : targetStatus;
+      if(data[playerName]===undefined) delete data[playerName];
 
-        // Retour visuel immédiat (optimiste), sauvegarde en arrière-plan
+      // Retour visuel immédiat (optimiste), sauvegarde en arrière-plan
+      row.querySelectorAll(".sbtn").forEach(bb=>bb.classList.remove("on-p","on-d","on-a"));
+      if(data[playerName]){ const btn=row.querySelector(`[data-s="${data[playerName]}"]`); if(btn) btn.classList.add("on-"+data[playerName].toLowerCase()); }
+      updateRowCount(team, s.date);
+
+      const ok = await saveAttendance(team, s.date, data);
+      if(!ok){
+        if(prevValue===undefined) delete data[playerName]; else data[playerName] = prevValue;
         row.querySelectorAll(".sbtn").forEach(bb=>bb.classList.remove("on-p","on-d","on-a"));
         if(data[playerName]){ const btn=row.querySelector(`[data-s="${data[playerName]}"]`); if(btn) btn.classList.add("on-"+data[playerName].toLowerCase()); }
         updateRowCount(team, s.date);
-
-        const ok = await saveAttendance(team, s.date, data);
-        if(!ok){
-          if(prevValue===undefined) delete data[playerName]; else data[playerName] = prevValue;
-          row.querySelectorAll(".sbtn").forEach(bb=>bb.classList.remove("on-p","on-d","on-a"));
-          if(data[playerName]){ const btn=row.querySelector(`[data-s="${data[playerName]}"]`); if(btn) btn.classList.add("on-"+data[playerName].toLowerCase()); }
-          updateRowCount(team, s.date);
-          showSaveError(row);
-        }
-      });
+        showSaveError(row, ()=>attemptPlayerStatusChange(targetStatus));
+      } else {
+        const existingMsg = row.nextElementSibling;
+        if(existingMsg && existingMsg.classList.contains("save-error-msg")) existingMsg.remove();
+      }
+    }
+    row.querySelectorAll(".sbtn").forEach(b=>{
+      b.addEventListener("click", ()=> attemptPlayerStatusChange(b.dataset.s));
     });
     listEl.appendChild(row);
     rows.push({date:s.date, row});

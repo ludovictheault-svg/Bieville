@@ -40,6 +40,14 @@ s'afficher et se sauvegarder normalement. En cas de souci, vérifiez dans l'ongl
 **Functions** du tableau de bord Netlify que `storage` s'est bien déployée, et consultez
 ses logs d'exécution en cas d'erreur.
 
+### Correctif important (v1.1)
+La première version de `netlify/functions/storage.js` oubliait d'appeler
+`connectLambda(event)` avant `getStore()`. Or, sans cet appel, les fonctions Netlify
+"classiques" (`exports.handler`) ne récupèrent jamais automatiquement la configuration
+de Netlify Blobs (site/token) — chaque lecture/écriture échouait donc systématiquement,
+y compris en production. C'est corrigé dans cette version : `connectLambda(event)` est
+appelé en tout premier, avant tout accès au store.
+
 ## Structure des fichiers
 ```
 netlify.toml                     configuration Netlify (dossier public + fonctions)
