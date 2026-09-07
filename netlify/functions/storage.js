@@ -69,6 +69,9 @@ exports.handler = async (event) => {
 
     return { statusCode: 405, headers: CORS_HEADERS, body: JSON.stringify({ error: "Méthode non autorisée" }) };
   } catch (err) {
+    // Journalisé ici pour apparaître directement dans les logs Netlify (onglet Functions),
+    // avec le détail complet (nom d'erreur + pile d'appel), pas seulement le message.
+    console.error("[storage function] Erreur:", err && err.stack ? err.stack : err);
     return {
       statusCode: 500,
       headers: CORS_HEADERS,
