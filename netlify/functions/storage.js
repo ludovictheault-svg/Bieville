@@ -10,7 +10,7 @@
 // dans un seul "store" Netlify Blobs nommé "asvb-presences", une clé par entrée,
 // exactement comme sur Claude.ai (même schéma de clés : "attendance:team1:2026-10-05", etc.)
 
-const { getStore } = require("@netlify/blobs");
+const { getStore, connectLambda } = require("@netlify/blobs");
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +25,10 @@ exports.handler = async (event) => {
   }
 
   try {
+    // OBLIGATOIRE avec les fonctions Netlify "classiques" (exports.handler) : sans cet
+    // appel, l'environnement Netlify Blobs (siteID/token) n'est pas configuré et
+    // getStore() échoue systématiquement, même en production. C'était le bug initial.
+    connectLambda(event);
     const store = getStore({ name: "asvb-presences", consistency: "strong" });
 
     if (event.httpMethod === "GET") {
