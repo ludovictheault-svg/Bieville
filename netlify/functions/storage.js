@@ -29,7 +29,7 @@ exports.handler = async (event) => {
     // appel, l'environnement Netlify Blobs (siteID/token) n'est pas configuré et
     // getStore() échoue systématiquement, même en production. C'était le bug initial.
     connectLambda(event);
-    const store = getStore({ name: "asvb-presences", consistency: "strong" });
+    const store = getStore({ name: "asvb-presences" });
 
     if (event.httpMethod === "GET") {
       const params = event.queryStringParameters || {};
