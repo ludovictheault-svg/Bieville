@@ -57,36 +57,37 @@
 
   /* ===== Header / scoreboard ===== */
   header{
-    display:flex;justify-content:space-between;align-items:flex-end;
+    display:flex;justify-content:space-between;align-items:center;
     border-bottom:2px solid var(--gold);
-    padding-bottom:8px;margin-bottom:10px;flex-wrap:wrap;gap:8px;
+    padding-bottom:8px;margin-bottom:10px;gap:8px;
   }
   .club{
     font-family:var(--font-display);font-weight:800;
-    font-size:clamp(18px,3vw,26px);
-    letter-spacing:0.5px;
+    font-size:clamp(15px,4.5vw,22px);
+    letter-spacing:0.3px;
     line-height:1;
     text-transform:uppercase;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;
   }
   .club span{color:var(--gold);}
-  .subtitle{color:var(--muted);font-size:11px;margin-top:2px;letter-spacing:0.3px;}
+  .header-right{display:flex;align-items:center;gap:6px;flex-shrink:0;}
   .season-tag{
     font-family:var(--font-mono);
     background:var(--panel-2);
     border:1px solid var(--line);
     color:var(--gold);
-    padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;
+    padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;
   }
   .theme-toggle-btn{
     background:var(--panel-2);border:1px solid var(--line);
-    border-radius:4px;width:28px;height:28px;font-size:14px;
+    border-radius:4px;width:26px;height:26px;font-size:13px;
     cursor:pointer;flex-shrink:0;
     display:flex;align-items:center;justify-content:center;
   }
   .theme-toggle-btn:hover{border-color:var(--gold);}
 
   /* ===== Team tabs ===== */
-  .teamtabs{display:flex;gap:8px;margin-bottom:6px;}
+  .teamtabs{display:flex;gap:8px;margin-bottom:8px;}
   .teamtab{
     flex:1;
     background:var(--panel);
@@ -114,6 +115,10 @@
     padding:6px 11px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
   }
   .toolbar button.active{background:var(--gold);color:#1a1305;border-color:var(--gold);}
+  .icon-toggle-btn{
+    padding:6px 10px !important;font-size:14px !important;
+    width:32px;flex-shrink:0;
+  }
 
   /* ===== Timeline (liste pleine largeur, accordéon) ===== */
   .timeline{
@@ -418,12 +423,9 @@
 <div class="wrap">
 
   <header>
-    <div>
-      <div class="club">ASVB <span>Bieville</span>-Beuville</div>
-      <div class="subtitle">Feuille de présences — Entraînements &amp; Matchs</div>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <div class="season-tag">SAISON 2026 / 2027</div>
+    <div class="club">ASVB <span>Bieville</span>-Beuville</div>
+    <div class="header-right">
+      <div class="season-tag">26/27</div>
       <button id="theme-toggle" class="theme-toggle-btn" title="Essayer le mode clair">🌙</button>
     </div>
   </header>
@@ -439,7 +441,6 @@
     </div>
     <div class="gear-tab" data-team="params" id="tab-params" title="Paramètres">⚙️</div>
   </div>
-  <div class="toggle-hint">Touchez Équipe 1 et/ou Équipe 2 pour les afficher séparément ou ensemble.</div>
 
   <div class="toolbar" id="toolbar"></div>
   <div class="panel" id="formPanel" style="display:none;"></div>
@@ -1735,13 +1736,13 @@ function renderToolbar(){
   const tb = document.getElementById("toolbar");
   const pastCount = countPastHidden();
   const pastBtnHTML = currentTeam==="params" ? "" : `
-      <button id="toggle-past" class="${showPastSessions?"active":""}">${showPastSessions ? "🕐 Masquer les dates passées" : `🕐 Afficher les dates passées${pastCount?` (${pastCount})`:""}`}</button>
+      <button id="toggle-past" class="icon-toggle-btn ${showPastSessions?"active":""}" title="${showPastSessions ? "Masquer les dates passées" : `Afficher les dates passées${pastCount?` (${pastCount})`:""}`}">👁</button>
   `;
   if(currentTeam==="commun"){
     tb.innerHTML = `
-      <button id="bilan-team1" class="${bilanOpenTeam==="team1"?"active":""}">📊 Bilan Équipe 1</button>
-      <button id="bilan-team2" class="${bilanOpenTeam==="team2"?"active":""}">📊 Bilan Équipe 2</button>
-      <button id="player-view" class="${playerPanelOpenFor==="commun"?"active":""}">👤 Par joueur</button>
+      <button id="bilan-team1" class="${bilanOpenTeam==="team1"?"active":""}">📊 Éq.1</button>
+      <button id="bilan-team2" class="${bilanOpenTeam==="team2"?"active":""}">📊 Éq.2</button>
+      <button id="player-view" class="${playerPanelOpenFor==="commun"?"active":""}">👤 Joueur</button>
       ${pastBtnHTML}
     `;
     tb.querySelector("#bilan-team1").addEventListener("click", ()=> openBilan("team1"));
@@ -1752,9 +1753,9 @@ function renderToolbar(){
     tb.innerHTML = "";
   } else {
     tb.innerHTML = `
-      <button id="bilan-current" class="${bilanOpenTeam===currentTeam?"active":""}">📊 Bilan saison — ${TEAM_LABEL[currentTeam]}</button>
-      <button id="player-view" class="${playerPanelOpenFor===currentTeam?"active":""}">👤 Par joueur</button>
-      <button id="add-match">➕ Ajouter un match</button>
+      <button id="bilan-current" class="${bilanOpenTeam===currentTeam?"active":""}">📊 Bilan</button>
+      <button id="player-view" class="${playerPanelOpenFor===currentTeam?"active":""}">👤 Joueur</button>
+      <button id="add-match">➕ Match</button>
       ${pastBtnHTML}
     `;
     tb.querySelector("#bilan-current").addEventListener("click", ()=> openBilan(currentTeam));
