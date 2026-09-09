@@ -273,23 +273,29 @@
   .gender-tag.gt-tag-m{color:var(--team1);}
   .gender-tag.gt-tag-f{color:var(--team2);}
 
-  /* roster */
+  /* roster : pastille unique (verte=présent, or=dispo, rouge=absent), noms courts colorés,
+     2 colonnes par équipe quand l'effectif est celui d'un entraînement commun */
   .roster{display:flex;flex-direction:column;gap:3px;}
-  .prow{
-    display:flex;align-items:center;justify-content:space-between;
-    background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
-    padding:5px 10px;
+  .roster-columns{display:grid;grid-template-columns:1fr 1fr;gap:0 8px;}
+  .roster-col{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .roster-col-label{
+    font-size:10px;font-family:var(--font-mono);text-transform:uppercase;
+    letter-spacing:.5px;margin-bottom:1px;font-weight:700;
   }
-  .prow .pname{font-size:13px;font-weight:500;}
-  .statusbtns{display:flex;gap:5px;}
-  .sbtn{
-    width:30px;height:26px;border-radius:6px;border:1px solid var(--line);
-    background:transparent;color:var(--muted);font-size:12px;font-weight:700;
-    cursor:pointer;font-family:var(--font-mono);transition:all .12s;
+  .roster-col-label.t-team1{color:var(--team1);}
+  .roster-col-label.t-team2{color:var(--team2);}
+  .prow-compact{
+    display:flex;align-items:center;gap:8px;
+    background:var(--panel-2);border:2px solid var(--line);border-radius:6px;
+    padding:6px 8px;min-width:0;cursor:pointer;transition:all .12s;
   }
-  .sbtn.on-p{background:var(--present);border-color:var(--present);color:#08221c;}
-  .sbtn.on-d{background:var(--dispo);border-color:var(--dispo);color:#241a04;}
-  .sbtn.on-a{background:var(--absent);border-color:var(--absent);color:#2b0a08;}
+  .prow-compact:active{transform:scale(0.98);}
+  .pname-short{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+  .pname-short.name-f{color:var(--team2);}
+  .pname-short.name-m{color:var(--team1);}
+  .prow-compact.status-P{border-color:var(--present);background:rgba(63,167,150,0.12);}
+  .prow-compact.status-D{border-color:var(--dispo);background:rgba(240,180,41,0.12);}
+  .prow-compact.status-A{border-color:var(--absent);background:rgba(226,87,76,0.12);}
 
   .bilan-link{
     background:transparent;border:1px solid var(--line);color:var(--gold);
@@ -454,10 +460,21 @@
 const IS_NATIVE_STORAGE = !!(window.storage && typeof window.storage.get === "function");
 const NETLIFY_FN_URL = "/.netlify/functions/storage";
 
+/* Lit le corps JSON d'une réponse d'erreur pour en extraire le message précis renvoyé
+   par la fonction serverless (ex. "MissingBlobsEnvironmentError: ..."), plutôt que de
+   se contenter d'un vague "HTTP 500" qui ne dit rien sur la cause réelle. */
+async function readFnError(res){
+  try{
+    const body = await res.json();
+    if(body && body.error) return body.error;
+  }catch(e){ /* corps non-JSON, on garde juste le code HTTP */ }
+  return `HTTP ${res.status}`;
+}
+
 async function backendGet(key, shared){
   if(IS_NATIVE_STORAGE) return window.storage.get(key, shared);
   const res = await fetch(`${NETLIFY_FN_URL}?action=get&key=${encodeURIComponent(key)}`);
-  if(!res.ok) throw new Error("Storage get failed: HTTP "+res.status);
+  if(!res.ok) throw new Error("Storage get failed: "+(await readFnError(res)));
   const data = await res.json();
   if(data.value===null || data.value===undefined) return null;
   return {key, value: data.value, shared};
@@ -469,13 +486,13 @@ async function backendSet(key, value, shared){
     headers:{"Content-Type":"application/json"},
     body: JSON.stringify({key, value})
   });
-  if(!res.ok) throw new Error("Storage set failed: HTTP "+res.status);
+  if(!res.ok) throw new Error("Storage set failed: "+(await readFnError(res)));
   return {key, value, shared};
 }
 async function backendList(prefix, shared){
   if(IS_NATIVE_STORAGE) return window.storage.list(prefix, shared);
   const res = await fetch(`${NETLIFY_FN_URL}?action=list&prefix=${encodeURIComponent(prefix||"")}`);
-  if(!res.ok) throw new Error("Storage list failed: HTTP "+res.status);
+  if(!res.ok) throw new Error("Storage list failed: "+(await readFnError(res)));
   const data = await res.json();
   return {keys: data.keys||[], prefix, shared};
 }
@@ -785,6 +802,20 @@ function timeForSession(s){
 
 let currentTeam = "team1";
 let expandedKey = null; // "team:date" de la ligne actuellement dépliée (accordéon, une seule à la fois)
+
+/* Les séances passées sont masquées par défaut pour aller plus vite à l'essentiel
+   (les prochains entraînements/matchs) ; un bouton permet de les réafficher. */
+let showPastSessions = false;
+function isPastDate(iso){
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  return new Date(iso+"T00:00:00") < today;
+}
+function togglePastSessions(){
+  showPastSessions = !showPastSessions;
+  renderToolbar();
+  refreshCurrentView();
+}
 let bilanOpenTeam = null; // team dont le bilan est affiché dans #bilanPanel, ou null
 
 async function toggleRow(rowEl, team, iso){
@@ -814,7 +845,7 @@ function renderTimeline(){
   const el = document.getElementById("timeline");
   el.innerHTML = "";
   let lastMonth = null;
-  const sessions = effectiveSessions(currentTeam);
+  const sessions = effectiveSessions(currentTeam).filter(s=> showPastSessions || !isPastDate(s.date));
   const countTargets = [];
   sessions.forEach(s=>{
     const iso = s.date;
@@ -907,7 +938,12 @@ function isCommonTrainingDate(iso){
   return !!(s1 && s2 && isTrainingType(s1.type) && isTrainingType(s2.type));
 }
 
-function commonRoster(){ return [...ROSTERS.team1, ...ROSTERS.team2]; }
+function commonRoster(){
+  return [
+    ...ROSTERS.team1.map(p=>({...p, srcTeam:"team1"})),
+    ...ROSTERS.team2.map(p=>({...p, srcTeam:"team2"}))
+  ];
+}
 
 /* Effectif à utiliser pour une séance donnée : combiné si entraînement commun, sinon celui de l'équipe */
 function effectiveRoster(team, iso){
@@ -1119,36 +1155,55 @@ function sessionHeadHTML(team, s, actionIconsHTML){
   return `<div style="font-family:var(--font-mono);font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">${labelText}</div>${titleRow}<div class="sess-meta">${metaHTML}</div>${noteHTML}`;
 }
 
+/* Filles avant garçons, puis ordre alphabétique du prénom */
+function sortRosterForDisplay(list){
+  return [...list].sort((a,b)=>{
+    if(a.gender !== b.gender) return a.gender==="F" ? -1 : 1;
+    return a.name.localeCompare(b.name, "fr", {sensitivity:"base"});
+  });
+}
+/* "Christelle Bataille" -> "Christelle B." (gain de place sur mobile) */
+function shortPlayerName(fullName){
+  const parts = fullName.trim().split(/\s+/);
+  if(parts.length<2) return parts[0];
+  return `${parts[0]} ${parts[1][0]}.`;
+}
+const STATUS_LABEL = {P:"Présent", D:"Disponible", A:"Absent"};
+/* Ordre de cycle au clic sur la pastille : Présent -> (Disponible, matchs seulement) -> Absent -> vide */
+function nextStatusInCycle(current, trainingOnly){
+  const cycle = trainingOnly ? ["P","A"] : ["P","D","A"];
+  if(!current) return cycle[0];
+  const idx = cycle.indexOf(current);
+  if(idx===-1 || idx===cycle.length-1) return null;
+  return cycle[idx+1];
+}
+
 function buildRosterBlock(team, iso, data, sessionType, roster){
   roster = roster || ROSTERS[team];
   const trainingOnly = isTrainingType(sessionType); // entraînement/exempt : Présent ou Absent uniquement
+  const isCombined = roster.length>0 && roster[0].srcTeam !== undefined;
   const block = document.createElement("div");
-  block.innerHTML = `<div class="roster" id="roster-${team}"></div>`;
-  const rosterEl = block.querySelector(`#roster-${team}`);
-  roster.forEach(player=>{
+
+  function buildPlayerRow(player){
     const name = player.name;
-    const status = data[name] || null;
     const row = document.createElement("div");
-    row.className = "prow";
+    row.className = "prow-compact status-"+(data[name]||"unset");
+    row.setAttribute("role", "button");
+    row.setAttribute("tabindex", "0");
+    row.title = data[name] ? STATUS_LABEL[data[name]] : "Non renseigné";
     row.innerHTML = `
-      <div class="pname">${name} <span class="gender-tag ${player.gender==="M"?"gt-tag-m":"gt-tag-f"}">${player.gender==="M"?"♂":"♀"}</span></div>
-      <div class="statusbtns">
-        <button class="sbtn ${status==="P"?"on-p":""}" data-s="P" title="Présent">P</button>
-        ${trainingOnly ? "" : `<button class="sbtn ${status==="D"?"on-d":""}" data-s="D" title="Disponible">D</button>`}
-        <button class="sbtn ${status==="A"?"on-a":""}" data-s="A" title="Absent">A</button>
-      </div>
+      <span class="pname-short ${player.gender==="M"?"name-m":"name-f"}">${shortPlayerName(name)}</span>
     `;
-    async function attemptStatusChange(targetStatus){
+
+    async function attemptCycle(){
       const prevValue = data[name];
-      data[name] = (prevValue===targetStatus) ? undefined : targetStatus;
-      if(data[name]===undefined) delete data[name];
+      const newValue = nextStatusInCycle(prevValue, trainingOnly);
+      if(newValue===null) delete data[name]; else data[name] = newValue;
 
       // Retour visuel immédiat (optimiste) : on n'attend pas la fin de la sauvegarde
       // pour montrer le changement, afin d'éviter toute sensation de lenteur au clic.
-      row.querySelectorAll(".sbtn").forEach(bb=>bb.classList.remove("on-p","on-d","on-a"));
-      if(data[name]){ const btn=row.querySelector(`[data-s="${data[name]}"]`); if(btn) btn.classList.add("on-"+data[name].toLowerCase()); }
-      const tallyEl = document.getElementById("tally-"+team);
-      if(tallyEl) tallyEl.innerHTML = tallyHTML(data, roster, sessionType);
+      row.className = "prow-compact status-"+(data[name]||"unset");
+      row.title = data[name] ? STATUS_LABEL[data[name]] : "Non renseigné";
       updateRowCount(team, iso);
 
       const ok = await saveAttendance(team, iso, data);
@@ -1156,21 +1211,40 @@ function buildRosterBlock(team, iso, data, sessionType, roster){
         // La sauvegarde a échoué malgré les tentatives : on annule le changement visuel
         // pour ne jamais laisser affiché un état qui n'a pas réellement été enregistré.
         if(prevValue===undefined) delete data[name]; else data[name] = prevValue;
-        row.querySelectorAll(".sbtn").forEach(bb=>bb.classList.remove("on-p","on-d","on-a"));
-        if(data[name]){ const btn=row.querySelector(`[data-s="${data[name]}"]`); if(btn) btn.classList.add("on-"+data[name].toLowerCase()); }
-        if(tallyEl) tallyEl.innerHTML = tallyHTML(data, roster, sessionType);
+        row.className = "prow-compact status-"+(data[name]||"unset");
+        row.title = data[name] ? STATUS_LABEL[data[name]] : "Non renseigné";
         updateRowCount(team, iso);
-        showSaveError(row, ()=>attemptStatusChange(targetStatus));
+        showSaveError(row, attemptCycle);
       } else {
         const existingMsg = row.nextElementSibling;
         if(existingMsg && existingMsg.classList.contains("save-error-msg")) existingMsg.remove();
       }
     }
-    row.querySelectorAll(".sbtn").forEach(b=>{
-      b.addEventListener("click", ()=> attemptStatusChange(b.dataset.s));
-    });
-    rosterEl.appendChild(row);
-  });
+    row.addEventListener("click", attemptCycle);
+    row.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); attemptCycle(); } });
+    return row;
+  }
+
+  if(isCombined){
+    const wrap = document.createElement("div");
+    wrap.className = "roster-columns";
+    const col1 = document.createElement("div");
+    col1.className = "roster-col";
+    col1.innerHTML = `<div class="roster-col-label t-team1">Équipe 1</div>`;
+    sortRosterForDisplay(roster.filter(p=>p.srcTeam==="team1")).forEach(p=> col1.appendChild(buildPlayerRow(p)));
+    const col2 = document.createElement("div");
+    col2.className = "roster-col";
+    col2.innerHTML = `<div class="roster-col-label t-team2">Équipe 2</div>`;
+    sortRosterForDisplay(roster.filter(p=>p.srcTeam==="team2")).forEach(p=> col2.appendChild(buildPlayerRow(p)));
+    wrap.appendChild(col1);
+    wrap.appendChild(col2);
+    block.appendChild(wrap);
+  } else {
+    const col = document.createElement("div");
+    col.className = "roster-col";
+    sortRosterForDisplay(roster).forEach(p=> col.appendChild(buildPlayerRow(p)));
+    block.appendChild(col);
+  }
   return block;
 }
 
@@ -1610,7 +1684,7 @@ function renderTimelineCommun(){
   el.innerHTML = "";
   let lastMonth = null;
   const countTargets = [];
-  mergedEvents().forEach(({team, session:s})=>{
+  mergedEvents().filter(({session:s})=> showPastSessions || !isPastDate(s.date)).forEach(({team, session:s})=>{
     const iso = s.date;
     const f = fmtDate(iso);
     const key = f.year+"-"+f.month;
@@ -1651,17 +1725,29 @@ function renderTimelineCommun(){
   populateCachedRowCounts(countTargets);
 }
 
+function countPastHidden(){
+  if(currentTeam==="commun") return mergedEvents().filter(({session:s})=>isPastDate(s.date)).length;
+  if(currentTeam==="params") return 0;
+  return effectiveSessions(currentTeam).filter(s=>isPastDate(s.date)).length;
+}
+
 function renderToolbar(){
   const tb = document.getElementById("toolbar");
+  const pastCount = countPastHidden();
+  const pastBtnHTML = currentTeam==="params" ? "" : `
+      <button id="toggle-past" class="${showPastSessions?"active":""}">${showPastSessions ? "🕐 Masquer les dates passées" : `🕐 Afficher les dates passées${pastCount?` (${pastCount})`:""}`}</button>
+  `;
   if(currentTeam==="commun"){
     tb.innerHTML = `
       <button id="bilan-team1" class="${bilanOpenTeam==="team1"?"active":""}">📊 Bilan Équipe 1</button>
       <button id="bilan-team2" class="${bilanOpenTeam==="team2"?"active":""}">📊 Bilan Équipe 2</button>
       <button id="player-view" class="${playerPanelOpenFor==="commun"?"active":""}">👤 Par joueur</button>
+      ${pastBtnHTML}
     `;
     tb.querySelector("#bilan-team1").addEventListener("click", ()=> openBilan("team1"));
     tb.querySelector("#bilan-team2").addEventListener("click", ()=> openBilan("team2"));
     tb.querySelector("#player-view").addEventListener("click", ()=> openPlayerPanel("commun"));
+    tb.querySelector("#toggle-past").addEventListener("click", togglePastSessions);
   } else if(currentTeam==="params"){
     tb.innerHTML = "";
   } else {
@@ -1669,10 +1755,12 @@ function renderToolbar(){
       <button id="bilan-current" class="${bilanOpenTeam===currentTeam?"active":""}">📊 Bilan saison — ${TEAM_LABEL[currentTeam]}</button>
       <button id="player-view" class="${playerPanelOpenFor===currentTeam?"active":""}">👤 Par joueur</button>
       <button id="add-match">➕ Ajouter un match</button>
+      ${pastBtnHTML}
     `;
     tb.querySelector("#bilan-current").addEventListener("click", ()=> openBilan(currentTeam));
     tb.querySelector("#player-view").addEventListener("click", ()=> openPlayerPanel(currentTeam));
     tb.querySelector("#add-match").addEventListener("click", ()=> openMatchForm(currentTeam, null));
+    tb.querySelector("#toggle-past").addEventListener("click", togglePastSessions);
   }
 }
 

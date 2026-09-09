@@ -29,6 +29,11 @@ exports.handler = async (event) => {
     // appel, l'environnement Netlify Blobs (siteID/token) n'est pas configuré et
     // getStore() échoue systématiquement, même en production. C'était le bug initial.
     connectLambda(event);
+    // Pas de "consistency: strong" ici : ce mode nécessite une propriété
+    // 'uncachedEdgeURL' que connectLambda() ne fournit pas en mode Lambda classique,
+    // ce qui causait un échec systématique (BlobsConsistencyError). La cohérence par
+    // défaut (éventuelle, quelques dizaines de secondes de délai max entre les zones)
+    // est largement suffisante pour une feuille de présence d'un club.
     const store = getStore({ name: "asvb-presences" });
 
     if (event.httpMethod === "GET") {
