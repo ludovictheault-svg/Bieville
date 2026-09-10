@@ -307,6 +307,16 @@
     padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;
   }
   .empty-hint{color:var(--muted);font-size:13px;text-align:center;padding:60px 20px;}
+  .roster-loading{
+    color:var(--muted);font-size:12px;padding:10px 2px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .roster-loading::before{
+    content:"";width:13px;height:13px;border-radius:50%;
+    border:2px solid var(--line);border-top-color:var(--gold);
+    animation:spin .7s linear infinite;flex-shrink:0;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
 
   /* bilan */
   table.bilan{width:100%;border-collapse:collapse;font-size:13px;}
@@ -1261,12 +1271,16 @@ async function renderSessionDetail(panel, team, iso){
   const s = findSession(team, iso);
   if(!s){ panel.innerHTML = '<div class="empty-hint">Aucune séance à cette date.</div>'; return; }
   const roster = effectiveRoster(team, iso);
-  const data = await loadAttendance(team, iso);
   const actionIcons = team==="both" ? "" : `<button class="icon-btn" id="edit-sess" title="Modifier">✏️</button><button class="icon-btn" id="delete-sess" title="Supprimer">🗑️</button>`;
+
+  // Affichage immédiat de l'en-tête + un repère de chargement, sans attendre le réseau :
+  // avant, rien n'apparaissait tant que les présences n'étaient pas chargées, ce qui
+  // donnait une sensation de lenteur au dépliage même quand ça répondait vite.
   panel.innerHTML = `
     <div class="sess-head sess-head-compact">
       ${sessionHeadHTML(team, s, actionIcons)}
     </div>
+    <div class="roster-loading">Chargement de la feuille de présence…</div>
   `;
   if(team!=="both"){
     panel.querySelector("#edit-sess").addEventListener("click", ()=> openMatchForm(team, s));
@@ -1278,6 +1292,10 @@ async function renderSessionDetail(panel, team, iso){
       }
     });
   }
+
+  const data = await loadAttendance(team, iso);
+  const loadingEl = panel.querySelector(".roster-loading");
+  if(loadingEl) loadingEl.remove();
   panel.appendChild(buildRosterBlock(team, iso, data, s.type, roster));
 }
 
