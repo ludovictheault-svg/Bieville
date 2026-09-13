@@ -412,6 +412,8 @@
     padding:8px 12px;
   }
   .prow-param .pname{flex:1;font-size:14px;}
+  .prow-param.prow-inactive{opacity:.55;}
+  .inactive-tag{font-size:11px;color:var(--muted);font-style:italic;}
   .add-player-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
   .add-player-row input{flex:1;min-width:140px;}
 
@@ -514,6 +516,10 @@ async function backendList(prefix, shared){
 }
 
 function PL(name, gender){ return {name, gender}; } // gender: "M" ou "F"
+
+/* Effectif d'une équipe hors joueur·ses désactivé·es (pour la prise de présence,
+   le tirage au sort, le bilan…). La page Paramètres, elle, affiche tout le monde. */
+function activeRoster(team){ return ROSTERS[team].filter(p=>p.active!==false); }
 
 const DEFAULT_ROSTERS = {
   team1: [
@@ -963,8 +969,8 @@ function isCommonTrainingDate(iso){
 
 function commonRoster(){
   return [
-    ...ROSTERS.team1.map(p=>({...p, srcTeam:"team1"})),
-    ...ROSTERS.team2.map(p=>({...p, srcTeam:"team2"}))
+    ...activeRoster("team1").map(p=>({...p, srcTeam:"team1"})),
+    ...activeRoster("team2").map(p=>({...p, srcTeam:"team2"}))
   ];
 }
 
@@ -972,7 +978,7 @@ function commonRoster(){
 function effectiveRoster(team, iso){
   if(team==="both") return commonRoster();
   if(isCommonTrainingDate(iso)) return commonRoster();
-  return ROSTERS[team];
+  return activeRoster(team);
 }
 
 function storageKey(team, iso){
@@ -983,6 +989,19 @@ function storageKey(team, iso){
 /* Cache mémoire pour éviter de refaire les mêmes lectures de stockage à chaque
    changement d'onglet (source principale du "rate limit" atteint auparavant). */
 const attendanceCache = {};
+
+/* Recharge en arrière-plan les présences déjà consultées cette session (sans en charger
+   de nouvelles, pour ne pas surcharger le stockage partagé) — permet de voir les
+   modifications faites par une autre personne sans devoir recharger toute la page. */
+async function refreshCachedAttendance(){
+  const keys = Object.keys(attendanceCache);
+  await runWithLimit(keys, async (key)=>{
+    try{
+      const res = await backendGet(key, true);
+      attendanceCache[key] = res ? JSON.parse(res.value) : {};
+    }catch(e){ /* on garde la version déjà en cache en cas d'échec passager */ }
+  }, 2, 400);
+}
 
 /* Réessaie un appel de stockage plusieurs fois avec un délai croissant, pour absorber
    les erreurs passagères de type "rate limit exceeded" sans que l'utilisateur les voie. */
@@ -1514,11 +1533,11 @@ let playerPanelSelection = {}; // mémorise le dernier joueur choisi par context
 function playersForContext(context){
   if(context==="commun"){
     return [
-      ...ROSTERS.team1.map(p=>({...p, team:"team1"})),
-      ...ROSTERS.team2.map(p=>({...p, team:"team2"}))
+      ...activeRoster("team1").map(p=>({...p, team:"team1"})),
+      ...activeRoster("team2").map(p=>({...p, team:"team2"}))
     ];
   }
-  return ROSTERS[context].map(p=>({...p, team:context}));
+  return activeRoster(context).map(p=>({...p, team:context}));
 }
 
 function closePlayerPanel(){
@@ -1663,7 +1682,7 @@ function openBilan(team){
 
 async function renderBilan(team){
   const panel = document.getElementById("bilanPanel");
-  const roster = ROSTERS[team];
+  const roster = activeRoster(team);
   const allDates = effectiveSessions(team).map(s=>s.date);
   panel.innerHTML = `
     <div class="sess-head">
@@ -1832,6 +1851,7 @@ function renderToolbar(){
   const pastBtnHTML = currentTeam==="params" ? "" : `
       <button id="toggle-past" class="icon-toggle-btn ${showPastSessions?"active":""}" title="${showPastSessions ? "Masquer les dates passées" : `Afficher les dates passées${pastCount?` (${pastCount})`:""}`}">👁</button>
   `;
+  const refreshBtnHTML = `<button id="manual-refresh" class="icon-toggle-btn" title="Actualiser (voir les modifications d'une autre personne)">🔄</button>`;
   if(currentTeam==="commun"){
     tb.innerHTML = `
       <button id="bilan-team1" class="${bilanOpenTeam==="team1"?"active":""}">📊 Éq.1</button>
@@ -1839,24 +1859,29 @@ function renderToolbar(){
       <button id="player-view" class="${playerPanelOpenFor==="commun"?"active":""}">👤 Joueur</button>
       <button id="add-match">➕ Ajouter</button>
       ${pastBtnHTML}
+      ${refreshBtnHTML}
     `;
     tb.querySelector("#bilan-team1").addEventListener("click", ()=> openBilan("team1"));
     tb.querySelector("#bilan-team2").addEventListener("click", ()=> openBilan("team2"));
     tb.querySelector("#player-view").addEventListener("click", ()=> openPlayerPanel("commun"));
     tb.querySelector("#add-match").addEventListener("click", ()=> openMatchForm("both", null));
     tb.querySelector("#toggle-past").addEventListener("click", togglePastSessions);
+    tb.querySelector("#manual-refresh").addEventListener("click", (e)=> manualRefresh(e.currentTarget));
   } else if(currentTeam==="params"){
-    tb.innerHTML = "";
+    tb.innerHTML = refreshBtnHTML;
+    tb.querySelector("#manual-refresh").addEventListener("click", (e)=> manualRefresh(e.currentTarget));
   } else {
     tb.innerHTML = `
       <button id="bilan-current" class="${bilanOpenTeam===currentTeam?"active":""}">📊 Bilan</button>
       <button id="player-view" class="${playerPanelOpenFor===currentTeam?"active":""}">👤 Joueur</button>
       <button id="add-match">➕ Match</button>
       ${pastBtnHTML}
+      ${refreshBtnHTML}
     `;
     tb.querySelector("#bilan-current").addEventListener("click", ()=> openBilan(currentTeam));
     tb.querySelector("#player-view").addEventListener("click", ()=> openPlayerPanel(currentTeam));
     tb.querySelector("#add-match").addEventListener("click", ()=> openMatchForm(currentTeam, null));
+    tb.querySelector("#manual-refresh").addEventListener("click", (e)=> manualRefresh(e.currentTarget));
     tb.querySelector("#toggle-past").addEventListener("click", togglePastSessions);
   }
 }
@@ -2141,9 +2166,11 @@ function renderParamsPage(){
 function renderParamsTeam(team){
   const container = document.getElementById(`params-team${team==="team1"?1:2}`);
   const roster = ROSTERS[team];
+  const nbActive = roster.filter(p=>p.active!==false).length;
   const mgr = MANAGERS[team];
+  const otherTeam = team==="team1" ? "team2" : "team1";
   container.innerHTML = `
-    <h3>${TEAM_LABEL[team]} <span style="color:var(--muted);font-size:12px;font-family:var(--font-mono);text-transform:none;">(${roster.length} joueur·ses)</span></h3>
+    <h3>${TEAM_LABEL[team]} <span style="color:var(--muted);font-size:12px;font-family:var(--font-mono);text-transform:none;">(${nbActive} actif·ves${roster.length>nbActive?` · ${roster.length-nbActive} désactivé·es`:""})</span></h3>
     <div class="manager-box" id="manager-box-${team}">
       <div class="manager-info">
         <span class="manager-label">👤 Responsable d'équipe</span>
@@ -2165,19 +2192,36 @@ function renderParamsTeam(team){
   container.querySelector(`#edit-manager-${team}`).addEventListener("click", ()=> openEditManagerForm(team));
   const plist = container.querySelector(`#plist-${team}`);
   roster.forEach((player, idx)=>{
+    const isActive = player.active!==false;
     const row = document.createElement("div");
-    row.className = "prow-param";
+    row.className = "prow-param" + (isActive ? "" : " prow-inactive");
     row.innerHTML = `
-      <span class="pname">${player.name}</span>
+      <span class="pname">${player.name}${isActive?"":' <span class="inactive-tag">(désactivé·e)</span>'}</span>
       <span class="gender-tag ${player.gender==="M"?"gt-tag-m":"gt-tag-f"}">${player.gender==="M"?"♂":"♀"}</span>
       <div class="action-icons">
-        <button class="icon-btn" data-act="edit">✏️</button>
-        <button class="icon-btn" data-act="del">🗑</button>
+        <button class="icon-btn" data-act="move" title="Déplacer vers ${TEAM_LABEL[otherTeam]}">🔁</button>
+        <button class="icon-btn" data-act="toggle-active" title="${isActive?"Désactiver":"Réactiver"}">${isActive?"⏸":"▶️"}</button>
+        <button class="icon-btn" data-act="edit" title="Modifier">✏️</button>
+        <button class="icon-btn" data-act="del" title="Supprimer définitivement">🗑</button>
       </div>
     `;
     row.querySelector('[data-act="edit"]').addEventListener("click", ()=> openEditPlayerForm(team, idx, row));
+    row.querySelector('[data-act="toggle-active"]').addEventListener("click", ()=>{
+      ROSTERS[team][idx].active = isActive ? false : true;
+      persistRoster(team);
+      renderParamsTeam(team);
+    });
+    row.querySelector('[data-act="move"]').addEventListener("click", ()=>{
+      if(confirm(`Déplacer ${player.name} de ${TEAM_LABEL[team]} vers ${TEAM_LABEL[otherTeam]} ?`)){
+        ROSTERS[team].splice(idx,1);
+        ROSTERS[otherTeam].push(player);
+        persistRoster(team);
+        persistRoster(otherTeam);
+        renderParamsPage(); // les 2 colonnes changent, on reconstruit toute la page
+      }
+    });
     row.querySelector('[data-act="del"]').addEventListener("click", ()=>{
-      if(confirm(`Retirer ${player.name} de l'effectif ${TEAM_LABEL[team]} ?\n(L'historique de présence déjà enregistré est conservé mais ne sera plus affiché.)`)){
+      if(confirm(`Supprimer définitivement ${player.name} de l'effectif ${TEAM_LABEL[team]} ?\n(L'historique de présence déjà enregistré est conservé mais ne sera plus affiché. Pour retirer temporairement quelqu'un, préférez "Désactiver".)`)){
         ROSTERS[team].splice(idx,1);
         persistRoster(team);
         renderParamsTeam(team);
@@ -2236,7 +2280,7 @@ function openEditPlayerForm(team, idx, rowEl){
   rowEl.querySelector("#save-edit").addEventListener("click", ()=>{
     const newName = rowEl.querySelector("#edit-name").value.trim();
     if(!newName){ alert("Le nom ne peut pas être vide."); return; }
-    ROSTERS[team][idx] = PL(newName, rowEl.querySelector("#edit-gender").value);
+    ROSTERS[team][idx] = {...PL(newName, rowEl.querySelector("#edit-gender").value), active: player.active};
     persistRoster(team);
     renderParamsTeam(team);
   });
@@ -2265,8 +2309,59 @@ async function init(){
   applyTheme();
   renderToolbar();
   refreshCurrentView();
+
+  startAutoRefresh();
 }
 init();
+
+/* ===== Actualisation automatique =====
+   Permet de voir les modifications faites par une autre personne (calendrier, effectifs,
+   présences déjà consultées) sans devoir recharger la page. Se met en pause si l'onglet
+   n'est pas visible, et n'interrompt jamais une saisie en cours (formulaire ouvert). */
+let autoRefreshTimer = null;
+let isRefreshing = false;
+
+function isUserBusy(){
+  const formOpen = document.getElementById("formPanel").style.display==="block";
+  return formOpen;
+}
+
+async function performRefresh(){
+  if(isRefreshing) return;
+  isRefreshing = true;
+  try{
+    await Promise.all([loadRosters(), loadSessionOverrides(), loadManagers()]);
+    await refreshCachedAttendance();
+  }catch(e){
+    logSilently("refresh", e);
+  }
+  renderToolbar();
+  refreshCurrentView();
+  isRefreshing = false;
+}
+
+function startAutoRefresh(){
+  if(autoRefreshTimer) return;
+  autoRefreshTimer = setInterval(()=>{
+    if(document.hidden || isUserBusy()) return; // onglet caché ou formulaire ouvert : on ne dérange pas
+    performRefresh();
+  }, 25000);
+  // Actualise aussi dès que l'onglet redevient visible (ex. on revient sur l'appli
+  // après être passé sur une autre appli pendant un moment)
+  document.addEventListener("visibilitychange", ()=>{
+    if(!document.hidden && !isUserBusy()) performRefresh();
+  });
+}
+
+async function manualRefresh(btn){
+  if(isRefreshing) return;
+  const original = btn.textContent;
+  btn.textContent = "⏳";
+  btn.disabled = true;
+  await performRefresh();
+  btn.textContent = original;
+  btn.disabled = false;
+}
 </script>
 </body>
 </html>
