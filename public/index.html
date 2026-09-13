@@ -245,6 +245,11 @@
     background:rgba(240,180,41,0.08);border:1px solid rgba(240,180,41,0.25);
     padding:6px 10px;border-radius:6px;display:inline-block;
   }
+  .note.note-warn{
+    color:var(--absent);
+    background:rgba(226,87,76,0.1);border-color:rgba(226,87,76,0.35);
+    font-weight:600;
+  }
 
   .toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
   .view-toggle{display:flex;gap:6px;}
@@ -792,10 +797,17 @@ function deleteSessionEntry(team, date){
   persistSessionOverrides(team);
 }
 
+/* Un match à domicile sans arbitre et/ou table de marque désignés doit être signalé
+   (c'est le club recevant qui doit les fournir). */
+function isStaffMissing(s){
+  return s.type==="match" && s.home===true && (!s.referee || !s.scoreTable);
+}
+
 function sessionLabel(s){
   if(s.type==="match"){
     const conf = s.confirmed===true ? "" : " ⚠";
-    if(s.home===true) return {lbl:"Match — "+s.opponent+conf, badge:"DOM", badgeClass:"dom"};
+    const staffFlag = isStaffMissing(s) ? " 🚩" : "";
+    if(s.home===true) return {lbl:"Match — "+s.opponent+conf+staffFlag, badge:"DOM", badgeClass:"dom"};
     if(s.home===false) return {lbl:"Match — "+s.opponent+conf, badge: s.replaces?"EXT (lun.)":"EXT", badgeClass:"ext"};
     return {lbl:"Match — "+s.opponent+conf, badge:"?", badgeClass:"ext"};
   }
@@ -1143,10 +1155,21 @@ function sessionHeadHTML(team, s, actionIconsHTML){
       : `<span class="unconfirmed">⚠ Non confirmé</span>`;
     metaHTML = `<span><b>${dayName} ${f.day} ${f.monthLabel} ${f.year}</b></span><span class="match-time">${s.time||""}</span><span>${s.home===true?"Domicile":(s.home===false?"Extérieur":"Domicile/Extérieur à confirmer")}</span><span>${where}</span><span>${confirmBadge}</span>`;
     if(s.note) noteHTML = `<div class="note">${s.note}</div>`;
-    const contact = OPPONENT_CONTACTS[s.opponent];
-    if(contact){
-      const telHref = "tel:"+contact.phone.replace(/\s/g,"");
-      noteHTML += `<div class="opp-contact">📞 <b>${contact.name}</b> — <a href="${telHref}">${contact.phone}</a></div>`;
+    const fallback = OPPONENT_CONTACTS[s.opponent];
+    const contactName = s.oppContactName || (fallback && fallback.name);
+    const contactPhone = s.oppContactPhone || (fallback && fallback.phone);
+    if(contactName || contactPhone){
+      const telHref = contactPhone ? "tel:"+contactPhone.replace(/\s/g,"") : null;
+      noteHTML += `<div class="opp-contact">📞 ${contactName?`<b>${contactName}</b>`:"Contact adverse"}${contactPhone?` — ${telHref?`<a href="${telHref}">${contactPhone}</a>`:contactPhone}`:""}</div>`;
+    }
+    if(s.home===true && (s.referee || s.scoreTable)){
+      noteHTML += `<div class="opp-contact">${s.referee?`🧑‍⚖️ Arbitre : <b>${s.referee}</b>`:""}${s.referee && s.scoreTable?" · ":""}${s.scoreTable?`📋 Table de marque : <b>${s.scoreTable}</b>`:""}</div>`;
+    }
+    if(isStaffMissing(s)){
+      const missing = [];
+      if(!s.referee) missing.push("arbitre");
+      if(!s.scoreTable) missing.push("table de marque");
+      noteHTML += `<div class="note note-warn">🚩 ${missing.join(" et ")} manquant${missing.length>1?"s":""} — à désigner avant le match (${TEAM_LABEL[team]} reçoit).</div>`;
     }
   } else if(s.type==="coupe"){
     title = s.label;
@@ -1271,7 +1294,7 @@ async function renderSessionDetail(panel, team, iso){
   const s = findSession(team, iso);
   if(!s){ panel.innerHTML = '<div class="empty-hint">Aucune séance à cette date.</div>'; return; }
   const roster = effectiveRoster(team, iso);
-  const actionIcons = team==="both" ? "" : `<button class="icon-btn" id="edit-sess" title="Modifier">✏️</button><button class="icon-btn" id="delete-sess" title="Supprimer">🗑️</button>`;
+  const actionIcons = `<button class="icon-btn" id="edit-sess" title="Modifier">✏️</button><button class="icon-btn" id="delete-sess" title="Supprimer">🗑️</button>`;
 
   // Affichage immédiat de l'en-tête + un repère de chargement, sans attendre le réseau :
   // avant, rien n'apparaissait tant que les présences n'étaient pas chargées, ce qui
@@ -1282,16 +1305,22 @@ async function renderSessionDetail(panel, team, iso){
     </div>
     <div class="roster-loading">Chargement de la feuille de présence…</div>
   `;
-  if(team!=="both"){
-    panel.querySelector("#edit-sess").addEventListener("click", ()=> openMatchForm(team, s));
-    panel.querySelector("#delete-sess").addEventListener("click", ()=>{
-      if(confirm(`Supprimer définitivement cette séance du ${s.date} ?`)){
+  panel.querySelector("#edit-sess").addEventListener("click", ()=> openMatchForm(team, s));
+  panel.querySelector("#delete-sess").addEventListener("click", ()=>{
+    const msg = team==="both"
+      ? `Supprimer définitivement cette séance du ${s.date} pour les 2 équipes ?`
+      : `Supprimer définitivement cette séance du ${s.date} ?`;
+    if(confirm(msg)){
+      if(team==="both"){
+        deleteSessionEntry("team1", s.date);
+        deleteSessionEntry("team2", s.date);
+      } else {
         deleteSessionEntry(team, s.date);
-        expandedKey = null;
-        refreshCurrentView();
       }
-    });
-  }
+      expandedKey = null;
+      refreshCurrentView();
+    }
+  });
 
   const data = await loadAttendance(team, iso);
   const loadingEl = panel.querySelector(".roster-loading");
@@ -1322,9 +1351,17 @@ function openMatchForm(team, existingSession){
 
   fp.innerHTML = `
     <div class="sess-head">
-      <h2>${existingSession ? "Modifier la séance" : "Ajouter un match"} — ${TEAM_LABEL[team]}</h2>
+      <h2>${existingSession ? "Modifier la séance" : "Ajouter une séance"}</h2>
     </div>
     <div class="form-grid">
+      <div class="form-row">
+        <label>Équipe(s) concernée(s)</label>
+        <select id="f-team">
+          <option value="both" ${team==="both"?"selected":""}>Équipe 1 & Équipe 2 (commun)</option>
+          <option value="team1" ${team==="team1"?"selected":""}>Équipe 1 uniquement</option>
+          <option value="team2" ${team==="team2"?"selected":""}>Équipe 2 uniquement</option>
+        </select>
+      </div>
       <div class="form-row">
         <label>Date</label>
         <input type="date" id="f-date" value="${s.date||""}">
@@ -1332,8 +1369,8 @@ function openMatchForm(team, existingSession){
       <div class="form-row">
         <label>Type de séance</label>
         <select id="f-type">
-          <option value="match" ${s.type==="match"||!s.type?"selected":""}>Match</option>
-          <option value="entrainement" ${s.type==="entrainement"?"selected":""}>Entraînement</option>
+          <option value="entrainement" ${s.type==="entrainement"||!s.type?"selected":""}>Entraînement</option>
+          <option value="match" ${s.type==="match"?"selected":""}>Match</option>
           <option value="coupe" ${s.type==="coupe"?"selected":""}>Coupe du Calvados</option>
           <option value="bye" ${s.type==="bye"?"selected":""}>Semaine exempte (pas de match)</option>
         </select>
@@ -1360,6 +1397,24 @@ function openMatchForm(team, existingSession){
         <div class="form-row">
           <label>Lieu</label>
           <input type="text" id="f-place" value="${s.place||""}" placeholder="Ex. Gymnase Bieville-Beuville">
+        </div>
+        <div class="form-row">
+          <label>Contact adverse — Nom</label>
+          <input type="text" id="f-opp-contact-name" value="${s.oppContactName||""}" placeholder="Ex. Dupont Jean">
+        </div>
+        <div class="form-row">
+          <label>Contact adverse — Téléphone</label>
+          <input type="tel" id="f-opp-contact-phone" value="${s.oppContactPhone||""}" placeholder="Ex. 06 12 34 56 78">
+        </div>
+      </div>
+      <div id="f-home-only-fields" class="form-grid">
+        <div class="form-row">
+          <label>Arbitre</label>
+          <input type="text" id="f-referee" value="${s.referee||""}" placeholder="Ex. À désigner / Nom de l'arbitre">
+        </div>
+        <div class="form-row">
+          <label>Table de marque</label>
+          <input type="text" id="f-score-table" value="${s.scoreTable||""}" placeholder="Ex. Nom du/de la marqueur·se">
         </div>
       </div>
     </div>
@@ -1388,16 +1443,23 @@ function openMatchForm(team, existingSession){
     document.getElementById("f-match-fields").style.display = (t==="match") ? "block" : "none";
     document.getElementById("f-coupe-fields").style.display = (t==="coupe") ? "block" : "none";
   }
+  function toggleHomeOnlyFields(){
+    const isHome = document.getElementById("f-home").value === "true";
+    document.getElementById("f-home-only-fields").style.display = isHome ? "grid" : "none";
+  }
   document.getElementById("f-type").addEventListener("change", toggleFieldsByType);
+  document.getElementById("f-home").addEventListener("change", toggleHomeOnlyFields);
   toggleFieldsByType();
+  toggleHomeOnlyFields();
 
   document.getElementById("f-cancel").addEventListener("click", closeMatchForm);
-  document.getElementById("f-save").addEventListener("click", ()=> submitMatchForm(team));
+  document.getElementById("f-save").addEventListener("click", submitMatchForm);
 
   fp.scrollIntoView({behavior:"smooth", block:"start"});
 }
 
-function submitMatchForm(team){
+function submitMatchForm(){
+  const targetTeam = document.getElementById("f-team").value; // "team1" | "team2" | "both"
   const date = document.getElementById("f-date").value;
   if(!date){ alert("Merci de choisir une date."); return; }
   const type = document.getElementById("f-type").value;
@@ -1410,10 +1472,18 @@ function submitMatchForm(team){
     const home = homeStr==="true" ? true : (homeStr==="false" ? false : null);
     const time = document.getElementById("f-time").value.trim();
     const place = document.getElementById("f-place").value.trim();
+    const oppContactName = document.getElementById("f-opp-contact-name").value.trim();
+    const oppContactPhone = document.getElementById("f-opp-contact-phone").value.trim();
+    const referee = home===true ? document.getElementById("f-referee").value.trim() : "";
+    const scoreTable = home===true ? document.getElementById("f-score-table").value.trim() : "";
     // Une séance à l'extérieur qui tombe un lundi remplace l'entraînement, comme le reste du calendrier
     const weekday = new Date(date+"T00:00:00").getDay();
     const replaces = (home===true) ? true : (home===false ? weekday===1 : false);
     extra = {opponent, home, time, place, replaces};
+    if(oppContactName) extra.oppContactName = oppContactName;
+    if(oppContactPhone) extra.oppContactPhone = oppContactPhone;
+    if(referee) extra.referee = referee;
+    if(scoreTable) extra.scoreTable = scoreTable;
   } else if(type==="coupe"){
     const label = document.getElementById("f-label").value.trim() || "Coupe du Calvados";
     extra = {label};
@@ -1424,7 +1494,13 @@ function submitMatchForm(team){
   extra.confirmed = confirmedChecked;
 
   const newSession = S(date, type, extra);
-  saveSessionOverride(team, newSession, formOpenFor ? formOpenFor.oldDate : null);
+  const oldDate = formOpenFor ? formOpenFor.oldDate : null;
+  if(targetTeam==="both"){
+    saveSessionOverride("team1", newSession, oldDate);
+    saveSessionOverride("team2", newSession, oldDate);
+  } else {
+    saveSessionOverride(targetTeam, newSession, oldDate);
+  }
   closeMatchForm();
   expandedKey = null;
   refreshCurrentView();
@@ -1761,11 +1837,13 @@ function renderToolbar(){
       <button id="bilan-team1" class="${bilanOpenTeam==="team1"?"active":""}">📊 Éq.1</button>
       <button id="bilan-team2" class="${bilanOpenTeam==="team2"?"active":""}">📊 Éq.2</button>
       <button id="player-view" class="${playerPanelOpenFor==="commun"?"active":""}">👤 Joueur</button>
+      <button id="add-match">➕ Ajouter</button>
       ${pastBtnHTML}
     `;
     tb.querySelector("#bilan-team1").addEventListener("click", ()=> openBilan("team1"));
     tb.querySelector("#bilan-team2").addEventListener("click", ()=> openBilan("team2"));
     tb.querySelector("#player-view").addEventListener("click", ()=> openPlayerPanel("commun"));
+    tb.querySelector("#add-match").addEventListener("click", ()=> openMatchForm("both", null));
     tb.querySelector("#toggle-past").addEventListener("click", togglePastSessions);
   } else if(currentTeam==="params"){
     tb.innerHTML = "";
